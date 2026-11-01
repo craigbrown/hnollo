@@ -32,7 +32,7 @@ export interface ReaderState {
   preferences: Preferences;
 }
 const defaults: Preferences = {
-  theme: "light",
+  theme: "system",
   layout: "large",
   textSize: "medium",
   twitterDisplay: "embedded",
