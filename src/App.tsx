@@ -586,9 +586,6 @@ function TabContent({ hash, active, tabId, destinations }: {
                 );
               })}
             </div>
-            <p className="group-note">
-              Hnollo is an unofficial HN client in the style of Apollo
-            </p>
           </div>
         )}
       </main>
