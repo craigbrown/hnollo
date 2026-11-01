@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { pageScrollHeight, pageScrollTop, pageViewport, scrollPage } from "../pageScroll";
 
 interface Metrics {
   range: number;
@@ -13,13 +14,15 @@ const empty: Metrics = { range: 0, track: 0, thumb: 0, top: 0, percent: 0 };
 // Native overlay scrollbars are controlled by the browser/OS. This indicator
 // consistently overlays the native scroll surface without shrinking its width.
 export function OverlayScrollbar({
-  scrollRef,
+  contentRef,
   routeKey,
   scrollId,
+  enabled,
 }: {
-  scrollRef: RefObject<HTMLElement | null>;
+  contentRef: RefObject<HTMLElement | null>;
   routeKey: string;
   scrollId: string;
+  enabled: boolean;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const metricsRef = useRef(empty);
@@ -39,23 +42,25 @@ export function OverlayScrollbar({
   }
 
   useEffect(() => {
-    const scroll = scrollRef.current;
+    const scroll = contentRef.current;
     const track = trackRef.current;
-    if (!scroll || !track) return;
+    if (!enabled || !scroll || !track) return;
     setActive(false);
     let frame = 0;
     function measure() {
-      const range = Math.max(0, scroll!.scrollHeight - scroll!.clientHeight);
+      const viewport = pageViewport().height;
+      const total = pageScrollHeight();
+      const range = Math.max(0, total - viewport);
       const height = track!.clientHeight;
       const thumb = Math.min(
         height,
         Math.max(
           30,
-          (height * scroll!.clientHeight) / Math.max(scroll!.scrollHeight, 1),
+          (height * viewport) / Math.max(total, 1),
         ),
       );
       const ratio = range
-        ? Math.min(1, Math.max(0, scroll!.scrollTop / range))
+        ? Math.min(1, Math.max(0, pageScrollTop() / range))
         : 0;
       const next = {
         range,
@@ -91,7 +96,9 @@ export function OverlayScrollbar({
       subtree: true,
       characterData: true,
     });
-    scroll.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", schedule);
+    window.visualViewport?.addEventListener("resize", schedule);
     scroll.addEventListener("load", schedule, true);
     schedule();
     return () => {
@@ -99,21 +106,23 @@ export function OverlayScrollbar({
       clearTimeout(hideTimer.current);
       resize.disconnect();
       content.disconnect();
-      scroll.removeEventListener("scroll", onScroll);
+      window.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", schedule);
+      window.visualViewport?.removeEventListener("resize", schedule);
       scroll.removeEventListener("load", schedule, true);
       drag.current = null;
     };
-  }, [scrollRef, routeKey]);
+  }, [contentRef, routeKey, enabled]);
 
   function move(clientY: number) {
     const track = trackRef.current;
-    const scroll = scrollRef.current;
+    const scroll = contentRef.current;
     if (!track || !scroll || !drag.current) return;
     const current = metricsRef.current;
     const ratio =
       (clientY - track.getBoundingClientRect().top - drag.current.offset) /
       Math.max(1, current.track - current.thumb);
-    scroll.scrollTop = Math.max(0, Math.min(1, ratio)) * current.range;
+    scrollPage(Math.max(0, Math.min(1, ratio)) * current.range);
     reveal();
   }
 
@@ -161,19 +170,19 @@ export function OverlayScrollbar({
         reveal();
       }}
       onKeyDown={(event) => {
-        const scroll = scrollRef.current;
+        const scroll = contentRef.current;
         if (!scroll) return;
         const steps: Record<string, number> = {
           ArrowDown: 40,
           ArrowUp: -40,
-          PageDown: scroll.clientHeight * 0.85,
-          PageUp: -scroll.clientHeight * 0.85,
-          Home: -scroll.scrollHeight,
-          End: scroll.scrollHeight,
+          PageDown: pageViewport().height * 0.85,
+          PageUp: -pageViewport().height * 0.85,
+          Home: -pageScrollHeight(),
+          End: pageScrollHeight(),
         };
         if (!(event.key in steps)) return;
         event.preventDefault();
-        scroll.scrollTop += steps[event.key];
+        scrollPage(pageScrollTop() + steps[event.key]);
         reveal();
       }}
     >

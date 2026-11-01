@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
+import { pageScrollTop } from "./pageScroll";
 
 export const tabRoots = {
   posts: "#/feed/top",
@@ -50,6 +51,14 @@ function initialNavigation(): Navigation {
 }
 
 let navigation = initialNavigation();
+const positions = new Map<string, number>();
+export function rememberScrollPosition(tab: TabId, hash: string) {
+  if (navigation.active === tab && navigation.tabs[tab].stack.at(-1) === hash)
+    positions.set(`${tab}:${hash}`, Math.max(0, pageScrollTop()));
+}
+export function savedScrollPosition(tab: TabId, hash: string) {
+  return positions.get(`${tab}:${hash}`) ?? 0;
+}
 const listeners = new Set<() => void>();
 const subscribe = (listener: () => void) => {
   listeners.add(listener);
@@ -58,6 +67,9 @@ const subscribe = (listener: () => void) => {
 const getSnapshot = () => navigation;
 function activate(tab: TabId, stack: string[]) {
   if (tab === navigation.active && stack === navigation.tabs[tab].stack) return;
+  // Capture before the previous tab is hidden: a shorter destination can
+  // immediately clamp the document's scroll position during the DOM update.
+  rememberScrollPosition(navigation.active, navigation.tabs[navigation.active].stack.at(-1)!);
   navigation = {
     active: tab,
     tabs: { ...navigation.tabs, [tab]: { stack, visited: true } },
@@ -101,6 +113,8 @@ export function goBack() {
 export function useTabNavigation() {
   const snapshot = useSyncExternalStore(subscribe, getSnapshot);
   useEffect(() => {
+    const previousRestoration = window.history.scrollRestoration;
+    window.history.scrollRestoration = "manual";
     // Keep the current tab's stack on browser history entries as well, so Back,
     // Forward and direct links all use the same navigation model.
     const tab = navigation.active;
@@ -123,6 +137,7 @@ export function useTabNavigation() {
     window.addEventListener("popstate", change);
     window.addEventListener("hashchange", change);
     return () => {
+      window.history.scrollRestoration = previousRestoration;
       window.removeEventListener("popstate", change);
       window.removeEventListener("hashchange", change);
     };

@@ -19,6 +19,7 @@ import { JumpIcon } from "./Icons";
 import { Empty, ErrorState, Loading, RichText } from "./Common";
 import { useScrollSurface } from "./ScrollSurface";
 import { useCommentPosition } from "./useCommentPosition";
+import { pageScrollTop, pageViewport, scrollPage } from "../pageScroll";
 
 interface CommentProps {
   id: number;
@@ -44,7 +45,7 @@ function Comment({
   context,
   focusedId,
 }: CommentProps) {
-  const { scrollRef, active } = useScrollSurface();
+  const { active } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() =>
     context?.[0] ?? peekItem(id),
   );
@@ -72,11 +73,11 @@ function Comment({
           observer.disconnect();
         }
       },
-      { root: scrollRef.current, rootMargin: "500px 0px" },
+      { root: null, rootMargin: "500px 0px" },
     );
     if (container.current) observer.observe(container.current);
     return () => observer.disconnect();
-  }, [active, ready, scrollRef]);
+  }, [active, ready]);
   useEffect(() => {
     if (!ready || (context && !retry)) return;
     let cancelled = false;
@@ -263,7 +264,7 @@ export function ThreadView({
   onShare: (item: HNItem) => void;
   onRefreshComplete: () => void;
 }) {
-  const { scrollRef } = useScrollSurface();
+  const { contentRef } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() => {
     const cached = peekItem(id);
     return cached?.type === "comment" ? undefined : cached;
@@ -336,22 +337,22 @@ export function ThreadView({
     ? [...(item.kids ?? [])].sort((a, b) => b - a)
     : (item.kids ?? []);
   function nextThread() {
-    const root = scrollRef.current;
+    const root = contentRef.current;
     if (!root) return;
     const top =
       root.closest(".app-shell")
         ?.querySelector(".navigation-bar")
-        ?.getBoundingClientRect().bottom ?? root.getBoundingClientRect().top;
+        ?.getBoundingClientRect().bottom ?? pageViewport().top;
     const next = [...root.querySelectorAll<HTMLElement>(".root-comment")].find(
       (node) => node.getBoundingClientRect().top > top + 35,
     );
     if (next)
-      next.scrollIntoView({
-        behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      scrollPage(
+        pageScrollTop() + next.getBoundingClientRect().top - top - 8,
+        window.matchMedia("(prefers-reduced-motion: reduce)").matches
           ? "instant"
           : "smooth",
-        block: "start",
-      });
+      );
     else if (limit < ids.length) setLimit((value) => value + 20);
   }
   return (

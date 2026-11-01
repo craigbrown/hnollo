@@ -169,10 +169,12 @@ export function PopoverMenu({
       dialog.style.right = "auto";
     }
     position();
+    window.addEventListener("scroll", position, { passive: true });
     window.addEventListener("resize", position);
     window.visualViewport?.addEventListener("resize", position);
     window.visualViewport?.addEventListener("scroll", position);
     return () => {
+      window.removeEventListener("scroll", position);
       window.removeEventListener("resize", position);
       window.visualViewport?.removeEventListener("resize", position);
       window.visualViewport?.removeEventListener("scroll", position);

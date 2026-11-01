@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
+import { pageScrollTop } from "../pageScroll";
 
 const REFRESH_THRESHOLD = 120;
 const MAX_PULL = 200;
@@ -14,13 +15,13 @@ interface PullGesture {
 }
 
 export function PullToRefresh({
-  scrollRef,
+  contentRef,
   routeKey,
   disabled,
   refreshing,
   onRefresh,
 }: {
-  scrollRef: RefObject<HTMLElement | null>;
+  contentRef: RefObject<HTMLElement | null>;
   routeKey: string;
   disabled: boolean;
   refreshing: boolean;
@@ -33,7 +34,7 @@ export function PullToRefresh({
   const refreshingRef = useRef(refreshing);
   refreshingRef.current = refreshing;
   useEffect(() => {
-    const scroll = scrollRef.current;
+    const scroll = contentRef.current;
     if (!scroll || disabled) return;
     let disposed = false;
     let suppressClick = false;
@@ -62,7 +63,7 @@ export function PullToRefresh({
       suppressClick = false;
       if (
         event.touches.length !== 1 ||
-        scroll!.scrollTop > 1 ||
+        pageScrollTop() > 1 ||
         refreshingRef.current || pending.current
       ) {
         return;
@@ -100,7 +101,7 @@ export function PullToRefresh({
         !initial.started &&
         ((Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) ||
           dy < 0 ||
-          scroll!.scrollTop > 1)
+          pageScrollTop() > 1)
       ) {
         reset(true);
         return;
@@ -143,7 +144,7 @@ export function PullToRefresh({
       scroll.removeEventListener("touchcancel", end);
       document.removeEventListener("click", click, true);
     };
-  }, [scrollRef, routeKey, disabled, onRefresh]);
+  }, [contentRef, routeKey, disabled, onRefresh]);
   if (disabled) return null;
   return (
     <div

@@ -34,7 +34,7 @@ export function FeedView({
   onActions: ItemActionHandler;
   onRefreshComplete: () => void;
 }) {
-  const { scrollRef, active } = useScrollSurface();
+  const { active } = useScrollSurface();
   const key = `${feed}/${order}/${period}`;
   const initial = refresh ? undefined : feedCache.get(key);
   const [data, setData] = useState<FeedCache>(
@@ -177,13 +177,13 @@ export function FeedView({
         if (entries.some((entry) => entry.isIntersecting)) void more();
       },
       {
-        root: scrollRef.current,
+        root: null,
         rootMargin: "0px 0px 450px 0px",
       },
     );
     observer.observe(sentinel.current);
     return () => observer.disconnect();
-  }, [active, scrollRef, infinite, data.more, loading, error, more]);
+  }, [active, infinite, data.more, loading, error, more]);
 
   const posts = data.items.filter((item) => !hideRead || !state.posts[item.id]);
   if (loading && !data.items.length) return <Skeletons />;

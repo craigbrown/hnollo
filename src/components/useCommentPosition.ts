@@ -2,6 +2,7 @@ import { useEffect, useRef } from "react";
 import type { RefObject } from "react";
 import type { HNItem } from "../types";
 import { useScrollSurface } from "./ScrollSurface";
+import { pageScrollTop, pageViewport, scrollPage } from "../pageScroll";
 
 export function useCommentPosition(
   commentId: number | undefined,
@@ -9,10 +10,10 @@ export function useCommentPosition(
   query: string,
   discussion: RefObject<HTMLDivElement | null>,
 ) {
-  const { scrollRef, active } = useScrollSurface();
+  const { contentRef, active } = useScrollSurface();
   const positioned = useRef(false);
   useEffect(() => {
-    const root = scrollRef.current;
+    const root = contentRef.current;
     const content = discussion.current;
     if (
       !active || !commentId || !context || query.trim() ||
@@ -26,7 +27,7 @@ export function useCommentPosition(
       const row = content!.querySelector<HTMLElement>(".comment-focused");
       if (!row) return;
       const shell = root!.closest(".app-shell");
-      const viewport = root!.getBoundingClientRect();
+      const viewport = pageViewport();
       const header = shell?.querySelector(".navigation-bar")
         ?.getBoundingClientRect();
       const tabs = shell?.querySelector(".tab-bar")?.getBoundingClientRect();
@@ -38,9 +39,7 @@ export function useCommentPosition(
       const delta = bounds.height > bottom - top
         ? bounds.top - top
         : bounds.bottom - bottom;
-      root!.scrollTo({
-        top: Math.max(0, root!.scrollTop + delta), behavior: "instant",
-      });
+      scrollPage(pageScrollTop() + delta);
       positioned.current = true;
     }
     function schedule() {
@@ -64,11 +63,11 @@ export function useCommentPosition(
     root.addEventListener("load", schedule, true);
     const interactions = ["wheel", "touchstart", "pointerdown", "keydown"];
     interactions.forEach((event) =>
-      root.addEventListener(event, stop, { passive: true }));
+      window.addEventListener(event, stop, { passive: true }));
     schedule();
     return () => {
       dispose();
-      interactions.forEach((event) => root.removeEventListener(event, stop));
+      interactions.forEach((event) => window.removeEventListener(event, stop));
     };
-  }, [active, commentId, context, query, scrollRef, discussion]);
+  }, [active, commentId, context, query, contentRef, discussion]);
 }

@@ -44,7 +44,11 @@ import { PullToRefresh } from "./components/PullToRefresh";
 import { UserProfile } from "./components/UserProfile";
 import { OverlayScrollbar } from "./components/OverlayScrollbar";
 import { ScrollSurface } from "./components/ScrollSurface";
-import { navigate as nav, goBack, switchTab, useTabNavigation } from "./navigation";
+import {
+  navigate as nav, goBack, switchTab, useTabNavigation,
+  rememberScrollPosition, savedScrollPosition,
+} from "./navigation";
+import { scrollPage } from "./pageScroll";
 import type { TabId } from "./navigation";
 import {
   TopSortIcon,
@@ -207,10 +211,9 @@ function TabContent({ hash, active, tabId, destinations }: {
   const [thread, setThread] = useState<HNItem | undefined>(() =>
     route.type === "item" ? peekItem(route.id) : undefined,
   );
-  const scrollRef = useRef<HTMLElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
   const scrollId = `scroll-view-${tabId}`;
-  const surface = useMemo(() => ({ scrollRef, active }), [active]);
-  const positions = useRef(new Map<string, number>());
+  const surface = useMemo(() => ({ contentRef, active }), [active]);
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -264,11 +267,14 @@ function TabContent({ hash, active, tabId, destinations }: {
   }, [active, state.preferences.theme]);
   useLayoutEffect(() => {
     if (!active) return;
-    scrollRef.current?.scrollTo({
-      top: positions.current.get(hash) ?? 0,
-      behavior: "instant",
-    });
-  }, [active, hash, thread]);
+    scrollPage(savedScrollPosition(tabId, hash));
+  }, [active, hash, thread, tabId]);
+  useEffect(() => {
+    if (!active) return;
+    const remember = () => rememberScrollPosition(tabId, hash);
+    window.addEventListener("scroll", remember, { passive: true });
+    return () => window.removeEventListener("scroll", remember);
+  }, [active, hash, tabId]);
   useEffect(() => {
     if (!active) return;
     const name =
@@ -309,7 +315,7 @@ function TabContent({ hash, active, tabId, destinations }: {
               }[route.type];
   function refreshPage() {
     closeSheet();
-    scrollRef.current?.scrollTo({ top: 0 });
+    scrollPage(0);
     void triggerRefresh();
   }
   function shareUrl(item: UserActivity) {
@@ -496,16 +502,11 @@ function TabContent({ hash, active, tabId, destinations }: {
           </div>
         </header>
       )}
-      {hideRead && route.type === "feed" && (
-        <button className="filter-banner" onClick={() => setHideRead(false)}>
-          <EyeOff size={13} /> Read posts hidden <span>Show all</span>
-        </button>
-      )}
       <main
         id={scrollId}
         className="scroll-view"
         tabIndex={0}
-        ref={scrollRef}
+        ref={contentRef}
         onTouchStart={(event) => {
           const touch = event.touches[0];
           edgeSwipe.current =
@@ -531,19 +532,20 @@ function TabContent({ hash, active, tabId, destinations }: {
         onTouchCancel={() => {
           edgeSwipe.current = null;
         }}
-        onScroll={() => {
-          if (active)
-            positions.current.set(hash, scrollRef.current?.scrollTop ?? 0);
-        }}
         key={hash}
       >
         <PullToRefresh
-          scrollRef={scrollRef}
+          contentRef={contentRef}
           routeKey={hash}
           disabled={!active || !["feed", "item", "user"].includes(route.type)}
           refreshing={isRefreshing}
           onRefresh={triggerRefresh}
         />
+        {hideRead && route.type === "feed" && (
+          <button className="filter-banner" onClick={() => setHideRead(false)}>
+            <EyeOff size={13} /> Read posts hidden <span>Show all</span>
+          </button>
+        )}
         {route.type === "feed" && (
           <>
             <div className="feed-search">
@@ -620,9 +622,10 @@ function TabContent({ hash, active, tabId, destinations }: {
         )}
       </main>
       <OverlayScrollbar
-        scrollRef={scrollRef}
+        contentRef={contentRef}
         routeKey={hash}
         scrollId={scrollId}
+        enabled={active}
       />
       {!reader.storageAvailable() && (
         <div className="storage-warning" role="alert">
@@ -667,7 +670,7 @@ function TabContent({ hash, active, tabId, destinations }: {
                   route.type !== "item" &&
                   route.type !== "user"
                 ) {
-                  scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                  scrollPage(0, "smooth");
                 }
               }}
             >

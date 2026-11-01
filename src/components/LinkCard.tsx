@@ -30,7 +30,7 @@ export function previewImage(raw?: string): string | undefined {
     return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 export function LinkCard({ item, title }: { item: HNItem; title: string }) {
-  const { scrollRef, active } = useScrollSurface();
+  const { active } = useScrollSurface();
   const [failed, setFailed] = useState(false);
   const url = safeUrl(item.url);
   const knownImage = previewImage(url);
@@ -49,14 +49,14 @@ export function LinkCard({ item, title }: { item: HNItem; title: string }) {
           if (!cancelled) setMetadata(data);
         });
       },
-      { root: scrollRef.current, rootMargin: "350px 0px" },
+      { root: null, rootMargin: "350px 0px" },
     );
     observer.observe(ref.current);
     return () => {
       cancelled = true;
       observer.disconnect();
     };
-  }, [active, scrollRef, url, knownImage, metadata]);
+  }, [active, url, knownImage, metadata]);
   if (!url) return null;
   const image = !failed ? (knownImage ?? metadata?.image) : undefined;
   const directImage = image === url;
