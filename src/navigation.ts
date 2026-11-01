@@ -1,5 +1,5 @@
 import { useEffect, useSyncExternalStore } from "react";
-import { pageScrollTop } from "./pageScroll";
+import { pageScrollTop, scrollPage } from "./pageScroll";
 
 export const tabRoots = {
   posts: "#/feed/top",
@@ -96,7 +96,39 @@ export function navigate(path: string) {
   writeHistory(tab, stack.at(-1) === hash ? stack : [...stack, hash]);
 }
 export function switchTab(tab: TabId) {
-  if (tab !== navigation.active) writeHistory(tab, navigation.tabs[tab].stack);
+  if (tab !== navigation.active) {
+    writeHistory(tab, navigation.tabs[tab].stack);
+    return;
+  }
+  const stack = navigation.tabs[tab].stack;
+  const current = stack.at(-1)!;
+  const isFeed = (hash: string) => /^#\/feed(?:\/|$)/.test(hash);
+  function scrollToTop() {
+    scrollPage(0, window.matchMedia("(prefers-reduced-motion: reduce)").matches
+      ? "instant" : "smooth");
+  }
+  if (tab === "posts") {
+    if (isFeed(current)) {
+      if (pageScrollTop() > 1) scrollToTop();
+      else writeHistory(tab, ["#/feeds"]);
+    } else if (current === "#/feeds") {
+      scrollToTop();
+    } else {
+      // Return straight to the selected feed, keeping its sort and scroll position.
+      let feedIndex = stack.length - 1;
+      while (feedIndex >= 0 && !isFeed(stack[feedIndex])) feedIndex--;
+      writeHistory(tab, feedIndex >= 0
+        ? stack.slice(0, feedIndex + 1) : [tabRoots.posts]);
+    }
+  } else if (tab === "saved" || tab === "history") {
+    if (current !== tabRoots[tab]) writeHistory(tab, [tabRoots[tab]]);
+    else scrollToTop();
+  } else if (tab === "search") {
+    if (current !== tabRoots.search) writeHistory(tab, [tabRoots.search]);
+    else return "focus-search";
+  } else if (current === tabRoots[tab]) {
+    scrollToTop();
+  }
 }
 export function goBack() {
   const tab = navigation.active;

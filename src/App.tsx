@@ -664,13 +664,12 @@ function TabContent({ hash, active, tabId, destinations }: {
                   event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
                 ) return;
                 event.preventDefault();
-                switchTab(tab.id as TabId);
-                if (
-                  tab.id === activeTab &&
-                  route.type !== "item" &&
-                  route.type !== "user"
-                ) {
-                  scrollPage(0, "smooth");
+                if (switchTab(tab.id as TabId) === "focus-search") {
+                  scrollPage(0);
+                  // Keep focus within the tap so iPhone Safari can open its keyboard.
+                  contentRef.current?.querySelector<HTMLInputElement>(
+                    'input[aria-label="Search Posts"]',
+                  )?.focus({ preventScroll: true });
                 }
               }}
             >
