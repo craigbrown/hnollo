@@ -52,7 +52,7 @@ function Comment({
   );
   const [ready, setReady] = useState(!!context);
   const [failed, setFailed] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
+  const [contextCollapsed, setContextCollapsed] = useState(false);
   const [limit, setLimit] = useState(6);
   const [retry, setRetry] = useState(0);
   const [threadCount, setThreadCount] = useState<{
@@ -62,8 +62,16 @@ function Comment({
   }>();
   const contentId = useId();
   const container = useRef<HTMLDivElement>(null);
-  const wasCollapsed = useRef(false);
-  useReader();
+  const state = useReader();
+  // A comment permalink must reveal its target and ancestors even if those
+  // threads were collapsed in the full discussion. Keep that exception local.
+  const collapsed = context ? contextCollapsed : !!state.collapsedComments[id];
+  const wasCollapsed = useRef(collapsed);
+  function toggleCollapsed() {
+    const next = !collapsed;
+    reader.setCommentCollapsed(id, next);
+    if (context) setContextCollapsed(next);
+  }
   const read = !!item && isCommentRead(item, storyId);
   const isNew =
     visit.unread > 0 &&
@@ -160,7 +168,7 @@ function Comment({
           if (event.target.closest("a, button, input, select, textarea, [role='button']")) return;
           // Selecting/copying text must not collapse the comment under the selection.
           if (window.getSelection()?.isCollapsed === false) return;
-          setCollapsed((value) => !value);
+          toggleCollapsed();
         }}
       >
         {failed ? (
@@ -197,7 +205,7 @@ function Comment({
               </div>
               <button
                 className={`comment-toggle ${collapsed ? "" : "sr-only"}`}
-                onClick={() => setCollapsed((value) => !value)}
+                onClick={toggleCollapsed}
                 aria-expanded={!collapsed}
                 aria-controls={`${contentId}-body ${contentId}-children`}
                 aria-label={`${collapsed ? "Expand" : "Collapse"} comment by ${item.by ?? "deleted"}${total ? ` (${total.complete ? "" : "at least "}${total.count} ${total.count === 1 ? "comment" : "comments"} collapsed)` : ""}`}

@@ -27,6 +27,7 @@ export interface ReaderState {
   version: 1;
   posts: Record<string, number>;
   comments: Record<string, number>;
+  collapsedComments: Record<string, number>;
   discussions: Record<string, DiscussionVisit>;
   saved: HNItem[];
   history: HNItem[];
@@ -47,6 +48,7 @@ export function emptyState(): ReaderState {
     version: 1,
     posts: {},
     comments: {},
+    collapsedComments: {},
     discussions: {},
     saved: [],
     history: [],
@@ -118,6 +120,7 @@ export function parseState(raw: string | null): ReaderState {
       version: 1,
       posts,
       comments: timestamps(value.comments),
+      collapsedComments: timestamps(value.collapsedComments),
       discussions,
       saved: Array.isArray(value.saved)
         ? value.saved.filter(validItem).slice(0, 500)
@@ -219,6 +222,12 @@ function postState(item: HNItem) {
 export const reader = {
   get: () => state,
   storageAvailable: () => storageAvailable,
+  setCommentCollapsed(id: number, collapsed: boolean) {
+    const collapsedComments = { ...state.collapsedComments };
+    if (collapsed) collapsedComments[id] = Date.now();
+    else delete collapsedComments[id];
+    update({ ...state, collapsedComments: trim(collapsedComments, 20000) });
+  },
   markPost(item: HNItem) {
     update({ ...state, ...postState(item) });
   },
@@ -305,6 +314,7 @@ export const reader = {
       ...state,
       posts: {},
       comments: {},
+      collapsedComments: {},
       discussions: {},
       history: [],
       searches: [],
