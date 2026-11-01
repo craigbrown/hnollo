@@ -2,6 +2,7 @@ import {
   useCallback,
   useEffect,
   useLayoutEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
@@ -45,6 +46,9 @@ import { ThreadView } from "./components/ThreadView";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { UserProfile } from "./components/UserProfile";
 import { OverlayScrollbar } from "./components/OverlayScrollbar";
+import { ScrollSurface } from "./components/ScrollSurface";
+import { navigate as nav, goBack, switchTab, useTabNavigation } from "./navigation";
+import type { TabId } from "./navigation";
 import {
   CommentSortIcon,
   HistoryIcon,
@@ -108,15 +112,6 @@ export function parseRoute(hash: string): Route {
         : "day";
   return { type: "feed", feed, order, period };
 }
-const nav = (path: string) => {
-  const hash = path.startsWith("#") ? path : `#${path}`;
-  if (hash === window.location.hash) return;
-  const oldURL = window.location.href;
-  window.history.pushState({ hnolloNavigation: true }, "", hash);
-  window.dispatchEvent(
-    new HashChangeEvent("hashchange", { oldURL, newURL: window.location.href }),
-  );
-};
 const feedIcons = {
   top: Home,
   ask: MessageCircle,
@@ -131,7 +126,29 @@ const feedColors = {
 };
 
 export default function App() {
-  const [hash, setHash] = useState(window.location.hash || "#/feed/top");
+  const { active, tabs } = useTabNavigation();
+  const destinations = Object.fromEntries(
+    Object.entries(tabs).map(([id, state]) => [id, state.stack.at(-1)!]),
+  ) as Record<TabId, string>;
+  return (Object.keys(tabs) as TabId[]).map((tab) =>
+    tabs[tab].visited && (
+      <TabContent
+        key={tab}
+        tabId={tab}
+        hash={tabs[tab].stack.at(-1)!}
+        active={active === tab}
+        destinations={destinations}
+      />
+    ),
+  );
+}
+
+function TabContent({ hash, active, tabId, destinations }: {
+  hash: string;
+  active: boolean;
+  tabId: TabId;
+  destinations: Record<TabId, string>;
+}) {
   const route = parseRoute(hash);
   const state = useReader();
   const [sheet, setSheet] = useState<
@@ -171,19 +188,14 @@ export default function App() {
   const [hideRead, setHideRead] = useState(false);
   const [newest, setNewest] = useState(false);
   const [threadNew, setThreadNew] = useState(0);
-  const lastFeed = useRef(
-    route.type === "feed"
-      ? feedPath(route.feed, route.order, route.period)
-      : "/feed/top",
-  );
   const edgeSwipe = useRef<{ x: number; y: number } | null>(null);
   const [thread, setThread] = useState<HNItem | undefined>(() =>
     route.type === "item" ? peekItem(route.id) : undefined,
   );
   const scrollRef = useRef<HTMLElement>(null);
+  const scrollId = `scroll-view-${tabId}`;
+  const surface = useMemo(() => ({ scrollRef, active }), [active]);
   const positions = useRef(new Map<string, number>());
-  const previousHash = useRef(hash);
-  const previousPage = useRef("#/feed/top");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -202,32 +214,23 @@ export default function App() {
   }, []);
   useEffect(() => {
     seedItems([...state.history, ...state.saved]);
-    function change() {
-      const next = window.location.hash || "#/feed/top";
-      if (parseRoute(previousHash.current).type !== "item")
-        previousPage.current = previousHash.current;
-      previousHash.current = next;
-      setHash(next);
-      setSheet(null);
-      setActionItem(null);
-      finishRefresh();
-      setRefresh(0);
-      const nextRoute = parseRoute(next);
-      setThreadNew(0);
-      if (nextRoute.type === "feed")
-        lastFeed.current = feedPath(
-          nextRoute.feed,
-          nextRoute.order,
-          nextRoute.period,
-        );
-      setThread(nextRoute.type === "item" ? peekItem(nextRoute.id) : undefined);
-    }
-    window.addEventListener("hashchange", change);
-    return () => window.removeEventListener("hashchange", change);
     // Seeding is only needed at startup; live items are already cached by the API.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   useEffect(() => {
+    setSheet(null);
+    setActionItem(null);
+    finishRefresh();
+    setRefresh(0);
+    setThreadNew(0);
+    const nextRoute = parseRoute(hash);
+    setThread(nextRoute.type === "item" ? peekItem(nextRoute.id) : undefined);
+  }, [hash, finishRefresh]);
+  useEffect(() => {
+    if (!active) closeSheet();
+  }, [active]);
+  useEffect(() => {
+    if (!active) return;
     const media = window.matchMedia("(prefers-color-scheme: dark)");
     function apply() {
       const dark =
@@ -241,14 +244,16 @@ export default function App() {
     apply();
     media.addEventListener("change", apply);
     return () => media.removeEventListener("change", apply);
-  }, [state.preferences.theme]);
+  }, [active, state.preferences.theme]);
   useLayoutEffect(() => {
+    if (!active) return;
     scrollRef.current?.scrollTo({
-      top: route.type === "privacy" ? 0 : positions.current.get(hash) ?? 0,
+      top: positions.current.get(hash) ?? 0,
       behavior: "instant",
     });
-  }, [hash, thread]);
+  }, [active, hash, thread]);
   useEffect(() => {
+    if (!active) return;
     const name =
       route.type === "feed"
         ? feeds.find((feed) => feed.id === route.feed)?.name
@@ -260,17 +265,9 @@ export default function App() {
               ? "Hnollo"
               : route.type[0].toUpperCase() + route.type.slice(1);
     document.title = route.type === "feeds" ? "Hnollo" : `${name} · Hnollo`;
-  }, [hash, thread?.title]);
+  }, [active, hash, thread?.title]);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
-  const activeTab =
-    route.type === "privacy"
-      ? "settings"
-      : route.type === "item" ||
-          route.type === "feed" ||
-          route.type === "feeds" ||
-          route.type === "user"
-        ? "posts"
-        : route.type;
+  const activeTab = tabId;
   const feed =
     route.type === "feed"
       ? feeds.find((feed) => feed.id === route.feed)!
@@ -297,11 +294,6 @@ export default function App() {
     closeSheet();
     scrollRef.current?.scrollTo({ top: 0 });
     void triggerRefresh();
-  }
-  function goBack() {
-    if (window.history.state?.hnolloNavigation) window.history.back();
-    else if (route.type === "privacy") nav("/settings");
-    else nav(previousPage.current || "/feed/top");
   }
   async function share(item: HNItem) {
     closeSheet();
@@ -330,8 +322,9 @@ export default function App() {
       notify("Couldn’t copy the link in this browser.");
     }
   }
-  return (
+  const content = (
     <div
+      hidden={!active}
       onClickCapture={(event) => {
         if (
           event.button !== 0 ||
@@ -345,7 +338,11 @@ export default function App() {
           "a[href]",
         );
         const href = anchor?.getAttribute("href");
-        if (!href?.startsWith("#/") || anchor?.target === "_blank") return;
+        if (
+          !href?.startsWith("#/") ||
+          anchor?.target === "_blank" ||
+          anchor?.closest(".tab-bar")
+        ) return;
         event.preventDefault();
         nav(href);
       }}
@@ -476,7 +473,8 @@ export default function App() {
         </button>
       )}
       <main
-        id="scroll-view"
+        id={scrollId}
+        className="scroll-view"
         tabIndex={0}
         ref={scrollRef}
         onTouchStart={(event) => {
@@ -504,9 +502,10 @@ export default function App() {
         onTouchCancel={() => {
           edgeSwipe.current = null;
         }}
-        onScroll={() =>
-          positions.current.set(hash, scrollRef.current?.scrollTop ?? 0)
-        }
+        onScroll={() => {
+          if (active)
+            positions.current.set(hash, scrollRef.current?.scrollTop ?? 0);
+        }}
         key={hash}
       >
         <PullToRefresh
@@ -593,7 +592,11 @@ export default function App() {
           </div>
         )}
       </main>
-      <OverlayScrollbar scrollRef={scrollRef} routeKey={hash} />
+      <OverlayScrollbar
+        scrollRef={scrollRef}
+        routeKey={hash}
+        scrollId={scrollId}
+      />
       {!reader.storageAvailable() && (
         <div className="storage-warning" role="alert">
           Storage is unavailable. Reading history will last for this session.
@@ -606,35 +609,37 @@ export default function App() {
               id: "posts",
               name: "Posts",
               icon: PostsIcon,
-              path: lastFeed.current,
             },
-            { id: "saved", name: "Saved", icon: SavedIcon, path: "/saved" },
+            { id: "saved", name: "Saved", icon: SavedIcon },
             {
               id: "history",
               name: "History",
               icon: HistoryIcon,
-              path: "/history",
             },
-            { id: "search", name: "Search", icon: SearchIcon, path: "/search" },
+            { id: "search", name: "Search", icon: SearchIcon },
             {
               id: "settings",
               name: "Settings",
               icon: SettingsIcon,
-              path: "/settings",
             },
           ].map((tab) => (
             <a
               key={tab.id}
-              href={`#${tab.path}`}
+              href={destinations[tab.id as TabId]}
               className={`tab ${activeTab === tab.id ? "active" : ""}`}
               aria-current={activeTab === tab.id ? "page" : undefined}
               onClick={(event) => {
+                if (
+                  event.button !== 0 ||
+                  event.metaKey || event.ctrlKey || event.shiftKey || event.altKey
+                ) return;
+                event.preventDefault();
+                switchTab(tab.id as TabId);
                 if (
                   tab.id === activeTab &&
                   route.type !== "item" &&
                   route.type !== "user"
                 ) {
-                  event.preventDefault();
                   scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
                 }
               }}
@@ -931,4 +936,5 @@ export default function App() {
       )}
     </div>
   );
+  return <ScrollSurface.Provider value={surface}>{content}</ScrollSurface.Provider>;
 }

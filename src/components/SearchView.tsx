@@ -5,6 +5,7 @@ import { searchStories } from "../api";
 import { reader, useReader } from "../store";
 import { Post } from "./Post";
 import { Empty, ErrorState, Loading } from "./Common";
+import { useScrollSurface } from "./ScrollSurface";
 let previous = {
   query: "",
   newest: false,
@@ -17,6 +18,7 @@ export function SearchView({
 }: {
   onActions: (item: HNItem) => void;
 }) {
+  const { active } = useScrollSurface();
   const { searches } = useReader();
   const [query, setQuery] = useState(previous.query);
   const [newest, setNewest] = useState(previous.newest);
@@ -33,6 +35,9 @@ export function SearchView({
     if (value.trim()) reader.rememberSearch(value);
     draft.current.candidate = "";
   }, []);
+  useEffect(() => {
+    if (!active) finishSearch();
+  }, [active, finishSearch]);
   function changeQuery(value: string) {
     const next = value.trim();
     if (!next) finishSearch();

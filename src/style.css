@@ -78,6 +78,9 @@ button:active,
 a:active {
   opacity: 0.55;
 }
+.app-shell[hidden] {
+  display: none;
+}
 .app-shell {
   position: relative;
   display: flex;
@@ -498,7 +501,7 @@ a:active {
 :root[data-theme="dark"] .privacy-screen {
   --privacy-background: #202127;
 }
-.privacy-screen #scroll-view {
+.privacy-screen .scroll-view {
   padding-top: 0;
   padding-bottom: var(--privacy-footer-height);
   scroll-padding-top: 24px;
@@ -953,7 +956,7 @@ a:active {
   min-width: 30px;
   height: 40px;
 }
-#scroll-view {
+.scroll-view {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
@@ -1506,7 +1509,7 @@ a:active {
   white-space: nowrap;
 }
 
-#scroll-view::-webkit-scrollbar {
+.scroll-view::-webkit-scrollbar {
   display: none;
   width: 0;
   height: 0;

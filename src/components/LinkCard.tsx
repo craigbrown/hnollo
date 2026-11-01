@@ -4,6 +4,7 @@ import type { HNItem } from "../types";
 import { reader } from "../store";
 import { cachedPreview, getLinkPreview } from "../previews";
 import type { LinkPreview } from "../previews";
+import { useScrollSurface } from "./ScrollSurface";
 
 // Known publishers have deterministic image URLs. Other pages are inspected
 // for Open Graph/Twitter metadata when their CORS policy permits browser access.
@@ -29,6 +30,7 @@ export function previewImage(raw?: string): string | undefined {
     return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 export function LinkCard({ item, title }: { item: HNItem; title: string }) {
+  const { scrollRef, active } = useScrollSurface();
   const [failed, setFailed] = useState(false);
   const url = safeUrl(item.url);
   const knownImage = previewImage(url);
@@ -37,7 +39,7 @@ export function LinkCard({ item, title }: { item: HNItem; title: string }) {
   );
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
-    if (!url || knownImage || metadata || !ref.current) return;
+    if (!active || !url || knownImage || metadata || !ref.current) return;
     let cancelled = false;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -47,14 +49,14 @@ export function LinkCard({ item, title }: { item: HNItem; title: string }) {
           if (!cancelled) setMetadata(data);
         });
       },
-      { root: document.getElementById("scroll-view"), rootMargin: "350px 0px" },
+      { root: scrollRef.current, rootMargin: "350px 0px" },
     );
     observer.observe(ref.current);
     return () => {
       cancelled = true;
       observer.disconnect();
     };
-  }, [url, knownImage, metadata]);
+  }, [active, scrollRef, url, knownImage, metadata]);
   if (!url) return null;
   const image = !failed ? (knownImage ?? metadata?.image) : undefined;
   const directImage = image === url;

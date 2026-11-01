@@ -15,9 +15,11 @@ const empty: Metrics = { range: 0, track: 0, thumb: 0, top: 0, percent: 0 };
 export function OverlayScrollbar({
   scrollRef,
   routeKey,
+  scrollId,
 }: {
   scrollRef: RefObject<HTMLElement | null>;
   routeKey: string;
+  scrollId: string;
 }) {
   const trackRef = useRef<HTMLDivElement>(null);
   const metricsRef = useRef(empty);
@@ -122,7 +124,7 @@ export function OverlayScrollbar({
       role="scrollbar"
       aria-label="Scroll page"
       aria-orientation="vertical"
-      aria-controls="scroll-view"
+      aria-controls={scrollId}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={metrics.percent}

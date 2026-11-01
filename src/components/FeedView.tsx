@@ -6,6 +6,7 @@ import { getFeed, getItems, getTopStories, seedItems } from "../api";
 import { useReader } from "../store";
 import { Post } from "./Post";
 import { Empty, ErrorState, Loading, Skeletons } from "./Common";
+import { useScrollSurface } from "./ScrollSurface";
 
 interface FeedCache {
   ids: number[];
@@ -33,6 +34,7 @@ export function FeedView({
   onActions: (item: HNItem) => void;
   onRefreshComplete: () => void;
 }) {
+  const { scrollRef, active } = useScrollSurface();
   const key = `${feed}/${order}/${period}`;
   const initial = refresh ? undefined : feedCache.get(key);
   const [data, setData] = useState<FeedCache>(
@@ -168,20 +170,20 @@ export function FeedView({
   }, [data, feed, order, key]);
 
   useEffect(() => {
-    if (!infinite || !data.more || loading || error || !sentinel.current)
+    if (!active || !infinite || !data.more || loading || error || !sentinel.current)
       return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) void more();
       },
       {
-        root: document.getElementById("scroll-view"),
+        root: scrollRef.current,
         rootMargin: "0px 0px 450px 0px",
       },
     );
     observer.observe(sentinel.current);
     return () => observer.disconnect();
-  }, [infinite, data.more, loading, error, more]);
+  }, [active, scrollRef, infinite, data.more, loading, error, more]);
 
   const posts = data.items.filter((item) => !hideRead || !state.posts[item.id]);
   if (loading && !data.items.length) return <Skeletons />;

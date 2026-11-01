@@ -17,6 +17,7 @@ import { Post } from "./Post";
 import { CommentSearch } from "./CommentSearch";
 import { JumpIcon } from "./Icons";
 import { Empty, ErrorState, Loading, RichText } from "./Common";
+import { useScrollSurface } from "./ScrollSurface";
 
 interface CommentProps {
   id: number;
@@ -38,6 +39,7 @@ function Comment({
   onActions,
   forceRefresh,
 }: CommentProps) {
+  const { scrollRef, active } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() =>
     peekItem(id),
   );
@@ -57,6 +59,7 @@ function Comment({
     !item.dead &&
     !item.deleted;
   useEffect(() => {
+    if (!active || ready) return;
     const observer = new IntersectionObserver(
       (entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
@@ -64,11 +67,11 @@ function Comment({
           observer.disconnect();
         }
       },
-      { root: document.getElementById("scroll-view"), rootMargin: "500px 0px" },
+      { root: scrollRef.current, rootMargin: "500px 0px" },
     );
     if (container.current) observer.observe(container.current);
     return () => observer.disconnect();
-  }, []);
+  }, [active, ready, scrollRef]);
   useEffect(() => {
     if (!ready) return;
     let cancelled = false;
@@ -247,6 +250,7 @@ export function ThreadView({
   onShare: (item: HNItem) => void;
   onRefreshComplete: () => void;
 }) {
+  const { scrollRef } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() =>
     peekItem(id),
   );
@@ -304,10 +308,12 @@ export function ThreadView({
     ? [...(item.kids ?? [])].sort((a, b) => b - a)
     : (item.kids ?? []);
   function nextThread() {
-    const root = document.getElementById("scroll-view")!;
+    const root = scrollRef.current;
+    if (!root) return;
     const top =
-      document.querySelector(".navigation-bar")?.getBoundingClientRect()
-        .bottom ?? root.getBoundingClientRect().top;
+      root.closest(".app-shell")
+        ?.querySelector(".navigation-bar")
+        ?.getBoundingClientRect().bottom ?? root.getBoundingClientRect().top;
     const next = [...root.querySelectorAll<HTMLElement>(".root-comment")].find(
       (node) => node.getBoundingClientRect().top > top + 35,
     );
