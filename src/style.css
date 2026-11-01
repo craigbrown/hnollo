@@ -1369,8 +1369,22 @@ a:active {
 .comment-row {
   position: relative;
   padding: 7px 14px 8px calc(14px + var(--depth, 0) * 12px);
-  border-bottom: 0.5px solid var(--line);
+  border-bottom: 0.5px solid transparent;
   background: var(--surface);
+}
+.comment-row::after {
+  /* Avoid Safari's fractional-border rounding by scaling a 1px strip instead.
+     The transparent border above preserves the existing row spacing. */
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 1px;
+  background: var(--line);
+  transform: scaleY(0.5);
+  transform-origin: bottom;
+  pointer-events: none;
 }
 .comment-row:not([data-depth="0"]):before {
   content: "";
