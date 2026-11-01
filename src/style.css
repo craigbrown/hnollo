@@ -1203,6 +1203,38 @@ a:active {
   color: var(--text);
   margin-top: 15px;
 }
+.tweet-embed {
+  position: relative;
+  z-index: 1;
+  margin-top: 15px;
+  pointer-events: none;
+}
+.tweet-embed > .link-card {
+  margin-top: 0;
+  pointer-events: auto;
+}
+.tweet-embed-stage[aria-hidden="true"] {
+  position: absolute;
+  inset: 0 0 auto;
+  opacity: 0;
+  pointer-events: none;
+}
+.tweet-embed-attempt {
+  display: flex;
+  justify-content: center;
+  width: 100%;
+}
+.tweet-embed-stage .twitter-tweet {
+  margin: 0 !important;
+  pointer-events: auto;
+}
+.tweet-embed-stage iframe {
+  width: 100% !important;
+  max-width: 550px !important;
+  /* The widget handles its theme; a mismatched iframe scheme paints it white. */
+  color-scheme: normal;
+  pointer-events: auto;
+}
 .link-card-image {
   overflow: hidden;
   background: var(--grouped);

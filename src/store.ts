@@ -6,6 +6,7 @@ export interface Preferences {
   theme: "light" | "dark" | "system";
   layout: "large" | "compact";
   textSize: "small" | "medium" | "large";
+  twitterDisplay: "embedded" | "previews";
   dimRead: boolean;
 }
 export interface DiscussionVisit {
@@ -33,6 +34,7 @@ const defaults: Preferences = {
   theme: "light",
   layout: "large",
   textSize: "medium",
+  twitterDisplay: "embedded",
   dimRead: true,
 };
 export function emptyState(): ReaderState {
@@ -140,6 +142,9 @@ export function parseState(raw: string | null): ReaderState {
         textSize: ["small", "medium", "large"].includes(p.textSize)
           ? p.textSize
           : defaults.textSize,
+        twitterDisplay: ["embedded", "previews"].includes(p.twitterDisplay)
+          ? p.twitterDisplay
+          : defaults.twitterDisplay,
         dimRead: typeof p.dimRead === "boolean" ? p.dimRead : defaults.dimRead,
       },
     };

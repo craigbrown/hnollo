@@ -1,10 +1,12 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { domain, safeUrl } from "../utils";
 import type { HNItem } from "../types";
-import { reader } from "../store";
+import { reader, useReader } from "../store";
 import { cachedPreview, getLinkPreview } from "../previews";
 import type { LinkPreview } from "../previews";
 import { useScrollSurface } from "./ScrollSurface";
+import { tweetId } from "../tweets";
+import { TweetEmbed } from "./TweetEmbed";
 
 // Known publishers have deterministic image URLs. Other pages are inspected
 // for Open Graph/Twitter metadata when their CORS policy permits browser access.
@@ -30,6 +32,26 @@ export function previewImage(raw?: string): string | undefined {
     return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
 }
 export function LinkCard({ item, title }: { item: HNItem; title: string }) {
+  const { twitterDisplay } = useReader().preferences;
+  const id = tweetId(item.url);
+  const [failedTweet, setFailedTweet] = useState<string>();
+  const failEmbed = useCallback(() => setFailedTweet(id), [id]);
+  if (twitterDisplay === "embedded" && id && failedTweet !== id)
+    return (
+      <TweetEmbed
+        id={id}
+        onFailure={failEmbed}
+        fallback={<PreviewCard item={item} title={title} discover={false} />}
+      />
+    );
+  return <PreviewCard item={item} title={title} />;
+}
+
+function PreviewCard({ item, title, discover = true }: {
+  item: HNItem;
+  title: string;
+  discover?: boolean;
+}) {
   const { active } = useScrollSurface();
   const [failed, setFailed] = useState(false);
   const url = safeUrl(item.url);
@@ -39,7 +61,7 @@ export function LinkCard({ item, title }: { item: HNItem; title: string }) {
   );
   const ref = useRef<HTMLAnchorElement>(null);
   useEffect(() => {
-    if (!active || !url || knownImage || metadata || !ref.current) return;
+    if (!discover || !active || !url || knownImage || metadata || !ref.current) return;
     let cancelled = false;
     const observer = new IntersectionObserver(
       (entries) => {
@@ -56,7 +78,7 @@ export function LinkCard({ item, title }: { item: HNItem; title: string }) {
       cancelled = true;
       observer.disconnect();
     };
-  }, [active, url, knownImage, metadata]);
+  }, [discover, active, url, knownImage, metadata]);
   if (!url) return null;
   const image = !failed ? (knownImage ?? metadata?.image) : undefined;
   const directImage = image === url;

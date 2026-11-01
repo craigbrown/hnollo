@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Smartphone,
   Type,
+  Twitter,
 } from "lucide-react";
 import { version } from "../../package.json";
 import { reader, useReader } from "../store";
@@ -84,6 +85,26 @@ export function SettingsView() {
             })}
           />
           <span className="switch" aria-hidden="true" />
+        </label>
+      </div>
+      <div className="group-label">PREVIEWS</div>
+      <div className="settings-group">
+        <label className="settings-row settings-picker">
+          <span className="settings-icon blue">
+            <Twitter size={18} />
+          </span>
+          <span>Display Twitter/X as</span>
+          <select
+            aria-label="Display Twitter/X as"
+            value={prefs.twitterDisplay}
+            onChange={(event) => reader.setPreferences({
+              twitterDisplay: event.target.value as Preferences["twitterDisplay"],
+            })}
+          >
+            <option value="embedded">Embedded</option>
+            <option value="previews">Link preview</option>
+          </select>
+          <ChevronRight size={15} />
         </label>
       </div>
       <div className="group-label">ABOUT</div>
