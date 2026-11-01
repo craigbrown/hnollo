@@ -258,7 +258,12 @@ function ProfileComment({
         </button>
         <span>{timeAgo(item.time)}</span>
       </header>
-      <div>
+      <a
+        className="profile-comment-link"
+        href={`#/item/${item.storyId ?? item.id}/comment/${item.id}`}
+        aria-label={`View comment by ${item.by ?? "anonymous"} in discussion`}
+      />
+      <div className="profile-comment-body">
         <RichText html={item.text ?? ""} />
       </div>
       {item.storyId && (

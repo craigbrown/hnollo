@@ -16,6 +16,7 @@
   --line: #dedee0;
   --preview: #efeff0;
   --read: #99999f;
+  --comment-highlight: #f6ecd7;
   --shadow: 0 0 0 1px #00000008, 0 12px 70px #2323380a;
   color-scheme: light;
 }
@@ -30,6 +31,7 @@
   --line: #36373f;
   --preview: #292a33;
   --read: #80818b;
+  --comment-highlight: #403820;
   background: #111216;
   color-scheme: dark;
 }
@@ -1302,6 +1304,9 @@ a:active {
 .comment-new {
   background: #dce9f5;
 }
+.comment-focused {
+  background: var(--comment-highlight);
+}
 .comment-header {
   display: flex;
   align-items: center;
@@ -1454,7 +1459,7 @@ a:active {
   z-index: 6;
   border-radius: 8px;
 }
-:root[data-theme="dark"] .comment-new {
+:root[data-theme="dark"] .comment-new:not(.comment-focused) {
   background: #223b53;
 }
 :root[data-theme="dark"] .new-comment-badge {
@@ -1720,6 +1725,8 @@ a:active {
   color: var(--secondary);
 }
 .profile-comment {
+  position: relative;
+  isolation: isolate;
   padding: 8px 14px 10px;
   border-bottom: 8px solid var(--grouped);
   background: var(--surface);
@@ -1732,10 +1739,22 @@ a:active {
   min-height: 25px;
   margin-bottom: 5px;
   font-size: 13px;
+  pointer-events: none;
 }
 .profile-comment header .username-link {
-  flex: 1;
+  flex: 0 1 auto;
+  min-width: 0;
+  margin-right: auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
   font-weight: 500;
+}
+.profile-comment header a,
+.profile-comment header button {
+  position: relative;
+  z-index: 1;
+  pointer-events: auto;
 }
 .profile-comment header .icon-button {
   width: 23px;
@@ -1749,7 +1768,18 @@ a:active {
 .profile-comment .rich-text {
   line-height: 1.23;
 }
+.profile-comment-link {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+}
+.profile-comment-body .rich-text a {
+  position: relative;
+  z-index: 2;
+}
 .profile-comment-context {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-direction: column;
   gap: 7px;

@@ -60,7 +60,7 @@ import {
 
 type Route =
   | { type: "feed"; feed: Feed; order: StoryOrder; period: TopPeriod }
-  | { type: "item"; id: number }
+  | { type: "item"; id: number; commentId?: number }
   | { type: "user"; name: string; section: UserSection }
   | { type: "feeds" | "saved" | "history" | "search" | "settings" | "privacy" };
 export function parseRoute(hash: string): Route {
@@ -73,7 +73,15 @@ export function parseRoute(hash: string): Route {
     Number.isSafeInteger(Number(path[1])) &&
     Number(path[1]) > 0
   )
-    return { type: "item", id: Number(path[1]) };
+    return {
+      type: "item",
+      id: Number(path[1]),
+      commentId: path[2] === "comment" &&
+        /^\d+$/.test(path[3] ?? "") &&
+        Number.isSafeInteger(Number(path[3])) &&
+        Number(path[3]) > 0
+        ? Number(path[3]) : undefined,
+    };
   if (path[0] === "user" && path[1]) {
     try {
       const name = decodeURIComponent(path[1]);
@@ -537,8 +545,9 @@ function TabContent({ hash, active, tabId, destinations }: {
         )}
         {route.type === "item" && (
           <ThreadView
-            key={`${route.id}-${refresh}`}
+            key={`${route.id}-${route.commentId ?? "all"}-${refresh}`}
             id={route.id}
+            commentId={route.commentId}
             newest={newest}
             refresh={refresh}
             onActions={setActionItem}

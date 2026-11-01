@@ -9,6 +9,7 @@ export interface HNItem {
   score?: number;
   descendants?: number;
   kids?: number[];
+  parent?: number;
   deleted?: boolean;
   dead?: boolean;
 }

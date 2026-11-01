@@ -82,6 +82,27 @@ export async function getItems(ids: number[], refresh = false) {
     failed: results.filter((result) => result.status === "rejected").length,
   };
 }
+
+export async function getCommentContext(id: number, refresh = false) {
+  const comments: HNItem[] = [];
+  const seen = new Set<number>();
+  let current = id;
+  while (!seen.has(current)) {
+    seen.add(current);
+    const item = await getItem(current, refresh);
+    if (!item) break;
+    if (item.type !== "comment") {
+      if (comments.length && ["story", "poll", "job"].includes(item.type ?? ""))
+        return { story: item, comments: comments.reverse() };
+      break;
+    }
+    comments.push(item);
+    const parent = item.parent;
+    if (parent === undefined || !Number.isSafeInteger(parent) || parent <= 0) break;
+    current = parent;
+  }
+  throw new Error("Comment context is unavailable");
+}
 export async function getFeed(
   feed: Feed,
   order: StoryOrder = "hot",

@@ -10,7 +10,7 @@ import {
 import type { CSSProperties } from "react";
 import type { HNItem } from "../types";
 import type { DiscussionVisit } from "../store";
-import { getItem, peekItem } from "../api";
+import { getCommentContext, getItem, peekItem } from "../api";
 import { reader, useReader, isCommentRead } from "../store";
 import { timeAgo, userPath } from "../utils";
 import { Post } from "./Post";
@@ -18,6 +18,7 @@ import { CommentSearch } from "./CommentSearch";
 import { JumpIcon } from "./Icons";
 import { Empty, ErrorState, Loading, RichText } from "./Common";
 import { useScrollSurface } from "./ScrollSurface";
+import { useCommentPosition } from "./useCommentPosition";
 
 interface CommentProps {
   id: number;
@@ -28,6 +29,8 @@ interface CommentProps {
   readAtOpen: Set<number>;
   onActions: (item: HNItem) => void;
   forceRefresh: boolean;
+  context?: HNItem[];
+  focusedId?: number;
 }
 function Comment({
   id,
@@ -38,12 +41,14 @@ function Comment({
   readAtOpen,
   onActions,
   forceRefresh,
+  context,
+  focusedId,
 }: CommentProps) {
   const { scrollRef, active } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() =>
-    peekItem(id),
+    context?.[0] ?? peekItem(id),
   );
-  const [ready, setReady] = useState(false);
+  const [ready, setReady] = useState(!!context);
   const [failed, setFailed] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [limit, setLimit] = useState(6);
@@ -73,7 +78,7 @@ function Comment({
     return () => observer.disconnect();
   }, [active, ready, scrollRef]);
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || (context && !retry)) return;
     let cancelled = false;
     setFailed(false);
     getItem(id, retry > 0 || forceRefresh)
@@ -86,8 +91,11 @@ function Comment({
     return () => {
       cancelled = true;
     };
-  }, [id, ready, retry, forceRefresh]);
-  const children = item?.kids ?? [];
+  }, [id, ready, retry, forceRefresh, context]);
+  // Keep ancestors together in a permalink view, without intervening siblings
+  // displacing the parent context. The selected comment's replies remain normal.
+  const contextChild = context?.[1];
+  const children = contextChild ? [contextChild.id] : item?.kids ?? [];
   const style = {
     "--depth": Math.min(depth, 7),
     "--thread-color": depth
@@ -104,10 +112,11 @@ function Comment({
       data-loaded={!!item}
     >
       <div
-        className={`comment-row ${isNew ? "comment-new" : ""} ${collapsed ? "comment-collapsed" : ""}`}
+        className={`comment-row ${isNew ? "comment-new" : ""} ${collapsed ? "comment-collapsed" : ""} ${id === focusedId ? "comment-focused" : ""}`}
         style={style}
         data-depth={depth}
         data-new={isNew || undefined}
+        aria-current={id === focusedId ? "true" : undefined}
         aria-label={isNew ? `New comment by ${item?.by}` : undefined}
       >
         {failed ? (
@@ -197,6 +206,8 @@ function Comment({
               readAtOpen={readAtOpen}
               onActions={onActions}
               forceRefresh={forceRefresh}
+              context={contextChild ? context!.slice(1) : undefined}
+              focusedId={focusedId}
             />
           ))}
           {children.length > limit && (
@@ -235,6 +246,7 @@ function Comment({
 }
 export function ThreadView({
   id,
+  commentId,
   newest,
   refresh,
   onActions,
@@ -243,6 +255,7 @@ export function ThreadView({
   onRefreshComplete,
 }: {
   id: number;
+  commentId?: number;
   newest: boolean;
   refresh: number;
   onActions: (item: HNItem) => void;
@@ -251,14 +264,18 @@ export function ThreadView({
   onRefreshComplete: () => void;
 }) {
   const { scrollRef } = useScrollSurface();
-  const [item, setItem] = useState<HNItem | null | undefined>(() =>
-    peekItem(id),
-  );
+  const [item, setItem] = useState<HNItem | null | undefined>(() => {
+    const cached = peekItem(id);
+    return cached?.type === "comment" ? undefined : cached;
+  });
   const [visit, setVisit] = useState<DiscussionVisit>();
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
   const [limit, setLimit] = useState(20);
   const [query, setQuery] = useState("");
+  const [context, setContext] = useState<HNItem[]>();
+  const discussion = useRef<HTMLDivElement>(null);
+  useCommentPosition(commentId, visit ? context : undefined, query, discussion);
   const readAtOpen = useRef(
     new Set(Object.keys(reader.get().comments).map(Number)),
   );
@@ -267,7 +284,16 @@ export function ThreadView({
     setError(false);
     // Always revalidate the discussion count so the New badge is based on the
     // latest HN response, rather than a previously cached feed item.
-    getItem(id, true)
+    async function load() {
+      if (!commentId) return getItem(id, true);
+      const result = await getCommentContext(commentId, refresh > 0 || retry > 0);
+      if (id !== commentId && result.story.id !== id)
+        throw new Error("Comment belongs to a different discussion");
+      const story = await getItem(result.story.id, true);
+      if (!cancelled) setContext(result.comments);
+      return story;
+    }
+    load()
       .then((value) => {
         if (cancelled) return;
         setItem(value);
@@ -286,12 +312,14 @@ export function ThreadView({
     return () => {
       cancelled = true;
     };
-  }, [id, refresh, retry, onLoaded, onRefreshComplete]);
+  }, [id, commentId, refresh, retry, onLoaded, onRefreshComplete]);
   if (error)
     return (
       <ErrorState
         onRetry={() => setRetry((n) => n + 1)}
-        message="Couldn’t load this discussion."
+        message={commentId
+          ? "Couldn't load this comment's context."
+          : "Couldn't load this discussion."}
       />
     );
   if (item === undefined) return <Loading label="Loading discussion…" />;
@@ -352,33 +380,40 @@ export function ThreadView({
         <CommentSearch
           key={`${id}-${query.trim()}`}
           query={query.trim()}
-          story={id}
+          story={item.id}
           visit={visit}
           readAtOpen={readAtOpen.current}
           clear={() => setQuery("")}
         />
       ) : (
-        <>
+        <div ref={discussion}>
           <Post item={item} onActions={onActions} onShare={onShare} detail />
           {visit ? (
             <section className="comments" aria-label="Comments">
-              {ids.slice(0, limit).map((child) => (
+              {(context ? [context[0].id] : ids.slice(0, limit)).map((child) => (
                 <Comment
                   key={child}
                   id={child}
-                  storyId={id}
+                  storyId={item.id}
                   author={item.by}
                   visit={visit}
                   readAtOpen={readAtOpen.current}
                   onActions={onActions}
                   forceRefresh={refresh > 0}
+                  context={context}
+                  focusedId={commentId}
                 />
               ))}
             </section>
           ) : (
             <Loading label="Loading comments…" />
           )}
-          {limit < ids.length && (
+          {context && (
+            <a className="load-more" href={`#/item/${item.id}`}>
+              View all comments
+            </a>
+          )}
+          {!context && limit < ids.length && (
             <button
               className="load-more"
               onClick={() => setLimit((value) => value + 20)}
@@ -386,7 +421,7 @@ export function ThreadView({
               Load more comments
             </button>
           )}
-          {!ids.length && (
+          {!context && !ids.length && (
             <Empty
               icon={<MessageCircle size={38} strokeWidth={1.1} />}
               title="It’s quiet in here"
@@ -396,7 +431,7 @@ export function ThreadView({
                 : "No comments yet. Come back in a little while."}
             </Empty>
           )}
-          {!!ids.length && (
+          {!context && !!ids.length && (
             <button
               className="jump-button"
               onClick={nextThread}
@@ -405,7 +440,7 @@ export function ThreadView({
               <JumpIcon size={24} />
             </button>
           )}
-        </>
+        </div>
       )}
     </>
   );
