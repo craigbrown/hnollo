@@ -10,7 +10,7 @@ import {
   Share,
   Globe,
 } from "lucide-react";
-import type { HNItem } from "../types";
+import type { HNItem, ItemActionHandler } from "../types";
 import { decode, domain, number, safeUrl, timeAgo, userPath } from "../utils";
 import { newCommentCount, reader, useReader } from "../store";
 import { RichText } from "./Common";
@@ -24,7 +24,7 @@ export function Post({
   detail = false,
 }: {
   item: HNItem;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
   onShare?: (item: HNItem) => void;
   detail?: boolean;
 }) {
@@ -128,7 +128,7 @@ export function Post({
             <div className="post-actions">
               <button
                 className="icon-button more-post"
-                onClick={() => onActions(item)}
+                onClick={(event) => onActions(item, event.currentTarget)}
                 aria-label={`Actions for ${title}`}
               >
                 <MoreHorizontal size={24} />

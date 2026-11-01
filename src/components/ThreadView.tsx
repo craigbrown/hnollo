@@ -8,7 +8,7 @@ import {
   X,
 } from "lucide-react";
 import type { CSSProperties } from "react";
-import type { HNItem } from "../types";
+import type { HNItem, ItemActionHandler } from "../types";
 import type { DiscussionVisit } from "../store";
 import { getCommentContext, getItem, peekItem } from "../api";
 import { reader, useReader, isCommentRead } from "../store";
@@ -27,7 +27,7 @@ interface CommentProps {
   author?: string;
   visit: DiscussionVisit;
   readAtOpen: Set<number>;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
   forceRefresh: boolean;
   context?: HNItem[];
   focusedId?: number;
@@ -172,7 +172,7 @@ function Comment({
               </button>
               <button
                 className="comment-menu icon-button"
-                onClick={() => onActions(item)}
+                onClick={(event) => onActions(item, event.currentTarget)}
                 aria-label={`Actions for comment by ${item.by ?? "deleted"}`}
               >
                 <MoreHorizontal size={20} />
@@ -258,7 +258,7 @@ export function ThreadView({
   commentId?: number;
   newest: boolean;
   refresh: number;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
   onLoaded: (item: HNItem, newCount: number) => void;
   onShare: (item: HNItem) => void;
   onRefreshComplete: () => void;

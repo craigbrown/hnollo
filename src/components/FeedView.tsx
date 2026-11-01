@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Bookmark, History, EyeOff, Check } from "lucide-react";
-import type { Feed, HNItem, StoryOrder, TopPeriod } from "../types";
+import type { Feed, HNItem, StoryOrder, TopPeriod, ItemActionHandler } from "../types";
 import { topPeriods } from "../types";
 import { getFeed, getItems, getTopStories, seedItems } from "../api";
 import { useReader } from "../store";
@@ -31,7 +31,7 @@ export function FeedView({
   period: TopPeriod;
   refresh: number;
   hideRead: boolean;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
   onRefreshComplete: () => void;
 }) {
   const { scrollRef, active } = useScrollSurface();
@@ -250,7 +250,7 @@ export function LibraryView({
   onActions,
 }: {
   mode: "saved" | "history";
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
 }) {
   const state = useReader();
   const items = state[mode];

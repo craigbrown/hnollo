@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { History, Search, X } from "lucide-react";
-import type { HNItem } from "../types";
+import type { HNItem, ItemActionHandler } from "../types";
 import { searchStories } from "../api";
 import { reader, useReader } from "../store";
 import { Post } from "./Post";
@@ -16,7 +16,7 @@ let previous = {
 export function SearchView({
   onActions,
 }: {
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
 }) {
   const { active } = useScrollSurface();
   const { searches } = useReader();

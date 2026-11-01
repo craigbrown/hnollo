@@ -744,6 +744,7 @@ a:active {
   display: none;
 }
 .sheet-heading {
+  outline: none;
   background: var(--bar);
   color: var(--secondary);
   text-align: center;
@@ -780,6 +781,9 @@ a:active {
 }
 .sheet-options > :is(a, button) > span {
   flex: 1;
+}
+.action-sheet :is(a, button):focus-visible {
+  outline-offset: -4px;
 }
 .sheet-options .destructive {
   color: #ff3b30;
@@ -1837,7 +1841,10 @@ a:active {
   line-height: 17px;
   color: var(--secondary);
 }
-.sort-popover-options > button {
+.popover-heading {
+  outline: none;
+}
+.sort-popover-options > :is(button, a) {
   display: flex;
   align-items: center;
   gap: 15px;
@@ -1849,11 +1856,26 @@ a:active {
   line-height: 22px;
   color: var(--text);
 }
-.sort-popover-options > button:hover {
+.sort-popover-options > :is(button, a):hover {
   background: #88888815;
 }
-.sort-popover-options > button > svg {
+.sort-popover-options > :is(button, a):focus-visible {
+  outline-offset: -4px;
+}
+.sort-popover-options > :is(button, a) > svg {
   flex-shrink: 0;
+}
+.action-popover {
+  width: 270px;
+  padding: 12px 0;
+}
+.action-popover .sort-popover-options > :is(button, a) {
+  min-height: 44px;
+  padding: 10px 22px;
+}
+.action-popover .sort-popover-options > :is(button, a) > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 .period-calendar {
   position: relative;

@@ -7,7 +7,7 @@ import {
   MoreHorizontal,
   UserRound,
 } from "lucide-react";
-import type { HNItem, HNUser, UserActivity, UserSection } from "../types";
+import type { HNUser, UserActivity, UserSection, ItemActionHandler } from "../types";
 import { getUser, getUserActivity, peekUser } from "../api";
 import { accountAge, decode, number, timeAgo, userPath } from "../utils";
 import { Empty, ErrorState, Loading, RichText } from "./Common";
@@ -26,7 +26,7 @@ export function UserProfile({
   name: string;
   section: UserSection;
   refresh: number;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
   onRefreshComplete: () => void;
 }) {
   const key = `${name}/${section}`;
@@ -249,7 +249,7 @@ function ProfileComment({
   onActions,
 }: {
   item: UserActivity;
-  onActions: (item: HNItem) => void;
+  onActions: ItemActionHandler;
 }) {
   return (
     <article className="profile-comment">
@@ -260,7 +260,7 @@ function ProfileComment({
         <button
           className="icon-button"
           aria-label={`Actions for comment by ${item.by}`}
-          onClick={() => onActions(item)}
+          onClick={(event) => onActions(item, event.currentTarget)}
         >
           <MoreHorizontal size={22} />
         </button>

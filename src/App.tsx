@@ -15,13 +15,12 @@ import {
   ChevronLeft,
   ChevronRight,
   Clock3,
+  CircleUserRound,
   Copy,
-  Eye,
   EyeOff,
   Flame,
   Home,
   Layers,
-  Link2,
   MessageCircle,
   MoreHorizontal,
   RefreshCw,
@@ -32,11 +31,11 @@ import {
   TrendingUp,
   Trophy,
 } from "lucide-react";
-import type { HNItem, Feed, UserSection, StoryOrder, TopPeriod } from "./types";
+import type { HNItem, Feed, UserSection, StoryOrder, TopPeriod, UserActivity } from "./types";
 import { feeds, topPeriods, feedPath } from "./types";
 import { peekItem, seedItems } from "./api";
 import { reader, useReader } from "./store";
-import { decode, itemUrl, number, safeUrl, userUrl } from "./utils";
+import { appPostUrl, appUserUrl, decode, itemUrl, number, userPath, userUrl } from "./utils";
 import { Sheet, PopoverMenu } from "./components/Common";
 import { FeedView, LibraryView } from "./components/FeedView";
 import { SearchView } from "./components/SearchView";
@@ -170,6 +169,16 @@ function TabContent({ hash, active, tabId, destinations }: {
     | null
   >(null);
   const [actionItem, setActionItem] = useState<HNItem | null>(null);
+  const [actionAnchor, setActionAnchor] = useState<HTMLElement | null>(null);
+  const openActions = useCallback((item: HNItem, anchor?: HTMLElement) => {
+    setActionAnchor(anchor ?? null);
+    setActionItem(item);
+  }, []);
+  function openMenu(menu: Exclude<typeof sheet, null>, anchor: HTMLElement) {
+    setActionItem(null);
+    setActionAnchor(anchor);
+    setSheet(menu);
+  }
   const [toast, setToast] = useState("");
   const [refresh, setRefresh] = useState(0);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -210,6 +219,7 @@ function TabContent({ hash, active, tabId, destinations }: {
   const closeSheet = () => {
     setSheet(null);
     setActionItem(null);
+    setActionAnchor(null);
   };
   const notify = useCallback((message: string) => {
     setToast(message);
@@ -228,6 +238,7 @@ function TabContent({ hash, active, tabId, destinations }: {
   useEffect(() => {
     setSheet(null);
     setActionItem(null);
+    setActionAnchor(null);
     finishRefresh();
     setRefresh(0);
     setThreadNew(0);
@@ -303,32 +314,39 @@ function TabContent({ hash, active, tabId, destinations }: {
     scrollRef.current?.scrollTo({ top: 0 });
     void triggerRefresh();
   }
-  async function share(item: HNItem) {
+  function shareUrl(item: UserActivity) {
+    if (item.type !== "comment") return appPostUrl(item.id);
+    const storyId = item.storyId ?? (route.type === "item" ? thread?.id : undefined);
+    return appPostUrl(storyId ?? item.id, item.id);
+  }
+  async function shareLink(title: string, url: string) {
     closeSheet();
-    const url = itemUrl(item.id);
     try {
       if (navigator.share)
-        await navigator.share({
-          title: decode(item.title) || "Hacker News comment",
-          url,
-        });
+        await navigator.share({ title, url });
       else {
         await navigator.clipboard.writeText(url);
-        notify("Hacker News link copied");
+        notify("Link copied");
       }
     } catch (error) {
       if (!(error instanceof DOMException && error.name === "AbortError"))
-        notify("Couldn’t share this link. Try opening it on Hacker News.");
+        notify("Couldn't share this link. Try copying it instead.");
     }
   }
-  async function copyLink(item: HNItem) {
+  function share(item: HNItem) {
+    return shareLink(decode(item.title) || "Hacker News comment", shareUrl(item));
+  }
+  async function copyUrl(url: string) {
     closeSheet();
     try {
-      await navigator.clipboard.writeText(itemUrl(item.id));
+      await navigator.clipboard.writeText(url);
       notify("Link copied");
     } catch {
       notify("Couldn’t copy the link in this browser.");
     }
+  }
+  function copyLink(item: HNItem) {
+    return copyUrl(shareUrl(item));
   }
   const content = (
     <div
@@ -384,7 +402,7 @@ function TabContent({ hash, active, tabId, destinations }: {
           {route.type === "feed" ? (
             <button
               className="navigation-title"
-              onClick={() => setSheet("feeds")}
+              onClick={(event) => openMenu("feeds", event.currentTarget)}
               aria-label="Choose feed"
             >
               {title}
@@ -403,7 +421,7 @@ function TabContent({ hash, active, tabId, destinations }: {
               <>
                 <button
                   className="icon-button nav-icon"
-                  onClick={() => setSheet("feed-sort")}
+                  onClick={(event) => openMenu("feed-sort", event.currentTarget)}
                   aria-label="Sort stories"
                   title={
                     route.order === "top"
@@ -423,7 +441,7 @@ function TabContent({ hash, active, tabId, destinations }: {
                 </button>
                 <button
                   className="icon-button nav-icon"
-                  onClick={() => setSheet("more")}
+                  onClick={(event) => openMenu("more", event.currentTarget)}
                   aria-label="Feed options"
                 >
                   <MoreHorizontal size={25} />
@@ -434,14 +452,14 @@ function TabContent({ hash, active, tabId, destinations }: {
               <>
                 <button
                   className="icon-button nav-icon"
-                  onClick={() => setSheet("sort")}
+                  onClick={(event) => openMenu("sort", event.currentTarget)}
                   aria-label="Sort comments"
                 >
                   <CommentSortIcon size={27} />
                 </button>
                 <button
                   className="icon-button nav-icon"
-                  onClick={() => thread && setActionItem(thread)}
+                  onClick={(event) => thread && openActions(thread, event.currentTarget)}
                   aria-label="Discussion options"
                   disabled={!thread}
                 >
@@ -452,7 +470,7 @@ function TabContent({ hash, active, tabId, destinations }: {
             {route.type === "user" && (
               <button
                 className="icon-button nav-icon"
-                onClick={() => setSheet("user")}
+                onClick={(event) => openMenu("user", event.currentTarget)}
                 aria-label="Profile options"
               >
                 <MoreHorizontal size={25} />
@@ -538,7 +556,7 @@ function TabContent({ hash, active, tabId, destinations }: {
               period={route.period}
               refresh={refresh}
               hideRead={hideRead}
-              onActions={setActionItem}
+              onActions={openActions}
               onRefreshComplete={finishRefresh}
             />
           </>
@@ -550,7 +568,7 @@ function TabContent({ hash, active, tabId, destinations }: {
             commentId={route.commentId}
             newest={newest}
             refresh={refresh}
-            onActions={setActionItem}
+            onActions={openActions}
             onLoaded={onLoaded}
             onShare={share}
             onRefreshComplete={finishRefresh}
@@ -562,14 +580,14 @@ function TabContent({ hash, active, tabId, destinations }: {
             name={route.name}
             section={route.section}
             refresh={refresh}
-            onActions={setActionItem}
+            onActions={openActions}
             onRefreshComplete={finishRefresh}
           />
         )}
         {(route.type === "saved" || route.type === "history") && (
-          <LibraryView mode={route.type} onActions={setActionItem} />
+          <LibraryView mode={route.type} onActions={openActions} />
         )}
-        {route.type === "search" && <SearchView onActions={setActionItem} />}
+        {route.type === "search" && <SearchView onActions={openActions} />}
         {route.type === "settings" && <SettingsView />}
         {route.type === "privacy" && <PrivacyView onDone={goBack} />}
         {route.type === "feeds" && (
@@ -663,7 +681,7 @@ function TabContent({ hash, active, tabId, destinations }: {
         </div>
       )}
       {sheet === "feeds" && (
-        <Sheet title="Choose a feed" close={closeSheet}>
+        <PopoverMenu title="Choose a feed" anchor={actionAnchor} close={closeSheet}>
           {feeds.map((choice) => {
             const Icon = feedIcons[choice.id];
             return (
@@ -682,10 +700,10 @@ function TabContent({ hash, active, tabId, destinations }: {
               </button>
             );
           })}
-        </Sheet>
+        </PopoverMenu>
       )}
       {sheet === "more" && (
-        <PopoverMenu title={`${feed.name} options`} close={closeSheet}>
+        <PopoverMenu title={`${feed.name} options`} className="action-popover" hideTitle anchor={actionAnchor} close={closeSheet}>
           <button onClick={refreshPage}>
             <RefreshCw size={20} />
             <span>Refresh stories</span>
@@ -719,7 +737,7 @@ function TabContent({ hash, active, tabId, destinations }: {
         </PopoverMenu>
       )}
       {sheet === "feed-sort" && route.type === "feed" && (
-        <PopoverMenu title="Sort by…" close={closeSheet}>
+        <PopoverMenu title="Sort by…" anchor={actionAnchor} close={closeSheet}>
           {(["hot", "top", "new"] as const).map((order) => {
             const Icon =
               order === "hot" ? Flame : order === "top" ? Trophy : Clock3;
@@ -746,7 +764,7 @@ function TabContent({ hash, active, tabId, destinations }: {
         </PopoverMenu>
       )}
       {sheet === "top-period" && route.type === "feed" && (
-        <PopoverMenu title="Sort by Top for…" close={closeSheet}>
+        <PopoverMenu title="Sort by Top for…" anchor={actionAnchor} close={closeSheet}>
           {topPeriods.map((period) => (
             <button
               key={period.id}
@@ -766,7 +784,7 @@ function TabContent({ hash, active, tabId, destinations }: {
         </PopoverMenu>
       )}
       {sheet === "sort" && (
-        <Sheet title="Sort comments" close={closeSheet}>
+        <PopoverMenu title="Sort comments" className="action-popover" anchor={actionAnchor} close={closeSheet}>
           <button
             onClick={() => {
               setNewest(false);
@@ -791,27 +809,23 @@ function TabContent({ hash, active, tabId, destinations }: {
             <RefreshCw size={20} />
             <span>Refresh discussion</span>
           </button>
-        </Sheet>
+        </PopoverMenu>
       )}
       {sheet === "user" && route.type === "user" && (
-        <Sheet title={route.name} close={closeSheet}>
+        <PopoverMenu title={`${route.name} options`} className="action-popover" hideTitle anchor={actionAnchor} close={closeSheet}>
           <button onClick={refreshPage}>
             <RefreshCw size={20} />
             <span>Refresh profile</span>
           </button>
+          <button onClick={() => shareLink(`${route.name} on Hnollo`, appUserUrl(route.name))}>
+            <Share size={20} />
+            <span>Share profile</span>
+          </button>
           <button
-            onClick={async () => {
-              closeSheet();
-              try {
-                await navigator.clipboard.writeText(userUrl(route.name));
-                notify("Profile link copied");
-              } catch {
-                notify("Couldn’t copy the profile link.");
-              }
-            }}
+            onClick={() => copyUrl(appUserUrl(route.name))}
           >
             <Copy size={20} />
-            <span>Copy profile link</span>
+            <span>Copy link</span>
           </button>
           <a
             href={userUrl(route.name)}
@@ -822,7 +836,7 @@ function TabContent({ hash, active, tabId, destinations }: {
             <ArrowUpRight size={20} />
             <span>View on Hacker News</span>
           </a>
-        </Sheet>
+        </PopoverMenu>
       )}
       {sheet === "clear" && (
         <Sheet
@@ -844,88 +858,43 @@ function TabContent({ hash, active, tabId, destinations }: {
         </Sheet>
       )}
       {actionItem && (
-        <Sheet
-          title={
-            actionItem.type === "comment"
-              ? `Comment by ${actionItem.by ?? "deleted"}`
-              : decode(actionItem.title)
-          }
+        <PopoverMenu
+          title={actionItem.type === "comment" ? "Comment options" : "Post options"}
+          className="action-popover"
+          hideTitle
+          anchor={actionAnchor}
           close={closeSheet}
         >
           {actionItem.type !== "comment" && (
             <button
               onClick={() => {
-                nav(`/item/${actionItem.id}`);
-                closeSheet();
-              }}
-            >
-              <MessageCircle size={20} />
-              <span>Open discussion</span>
-              <ChevronRight size={17} />
-            </button>
-          )}
-          {actionItem.type !== "comment" && safeUrl(actionItem.url) && (
-            <a
-              href={safeUrl(actionItem.url)}
-              target="_blank"
-              rel="noopener noreferrer"
-              onClick={() => {
-                reader.markPost(actionItem);
-                closeSheet();
-              }}
-            >
-              <ArrowUpRight size={20} />
-              <span>Open article</span>
-            </a>
-          )}
-          {actionItem.type !== "comment" && (
-            <button
-              onClick={() => {
-                const saved = state.saved.some(
-                  (item) => item.id === actionItem.id,
-                );
+                const saved = state.saved.some((item) => item.id === actionItem.id);
                 reader.toggleSaved(actionItem);
                 closeSheet();
                 notify(saved ? "Removed from saved posts" : "Saved for later");
               }}
             >
-              <Bookmark size={20} />
-              <span>
-                {state.saved.some((item) => item.id === actionItem.id)
-                  ? "Unsave post"
-                  : "Save post"}
-              </span>
+              <Bookmark size={22} strokeWidth={1.5} />
+              <span>{state.saved.some((item) => item.id === actionItem.id) ? "Unsave" : "Save"}</span>
             </button>
           )}
-          <button
-            onClick={() => {
-              if (actionItem.type === "comment")
-                reader.markComments([
-                  {
-                    id: actionItem.id,
-                    time: actionItem.time,
-                    storyId: route.type === "item" ? route.id : undefined,
-                  },
-                ]);
-              else if (state.posts[actionItem.id])
-                reader.markUnread(actionItem.id);
-              else reader.markPost(actionItem);
-              closeSheet();
-            }}
-          >
-            <Eye size={20} />
-            <span>
-              {actionItem.type !== "comment" && state.posts[actionItem.id]
-                ? "Mark as unread"
-                : "Mark as read"}
-            </span>
-          </button>
+          {actionItem.by ? (
+            <a href={userPath(actionItem.by)} onClick={closeSheet}>
+              <CircleUserRound size={22} strokeWidth={1.5} />
+              <span>{actionItem.by}</span>
+            </a>
+          ) : (
+            <button disabled>
+              <CircleUserRound size={22} strokeWidth={1.5} />
+              <span>Username</span>
+            </button>
+          )}
           <button onClick={() => share(actionItem)}>
-            <Share size={20} />
-            <span>Share Hacker News link</span>
+            <Share size={22} strokeWidth={1.5} />
+            <span>{actionItem.type === "comment" ? "Share comment" : "Share post"}</span>
           </button>
           <button onClick={() => copyLink(actionItem)}>
-            <Copy size={20} />
+            <Copy size={22} strokeWidth={1.5} />
             <span>Copy link</span>
           </button>
           <a
@@ -934,11 +903,10 @@ function TabContent({ hash, active, tabId, destinations }: {
             rel="noopener noreferrer"
             onClick={closeSheet}
           >
-            <Link2 size={20} />
+            <ArrowUpRight size={22} strokeWidth={1.5} />
             <span>View on Hacker News</span>
-            <ArrowUpRight size={17} />
           </a>
-        </Sheet>
+        </PopoverMenu>
       )}
     </div>
   );

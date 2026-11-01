@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useRef } from "react";
 import type { ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { sanitize } from "../utils";
@@ -84,10 +84,12 @@ export function Sheet({
   close: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const headingRef = useRef<HTMLDivElement>(null);
   const descriptionId = useId();
   useEffect(() => {
     const dialog = ref.current!;
     dialog.showModal();
+    headingRef.current?.focus({ preventScroll: true });
     return () => dialog.close();
   }, []);
   return (
@@ -106,7 +108,7 @@ export function Sheet({
     >
       <div className="sheet-surface">
         <div className="sheet-handle" />
-        <div className="sheet-heading">
+        <div className="sheet-heading" ref={headingRef} tabIndex={-1}>
           {title}
           {description && (
             <p id={descriptionId} className="sheet-description">
@@ -127,21 +129,60 @@ export function PopoverMenu({
   title,
   children,
   close,
+  anchor,
+  hideTitle = false,
+  className = "",
 }: {
   title: string;
   children: ReactNode;
   close: () => void;
+  anchor?: HTMLElement | null;
+  hideTitle?: boolean;
+  className?: string;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
-  useEffect(() => {
+  const headingRef = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
     const dialog = ref.current!;
     dialog.showModal();
-    return () => dialog.close();
-  }, []);
+    headingRef.current?.focus({ preventScroll: true });
+    function position() {
+      if (!anchor) return;
+      const margin = 12;
+      const viewport = window.visualViewport;
+      const left = viewport?.offsetLeft ?? 0;
+      const top = viewport?.offsetTop ?? 0;
+      const right = left + (viewport?.width ?? window.innerWidth);
+      const bottom = top + (viewport?.height ?? window.innerHeight);
+      dialog.style.maxHeight = `${Math.max(0, bottom - top - margin * 2)}px`;
+      dialog.style.maxWidth = `${Math.max(0, right - left - margin * 2)}px`;
+      const trigger = anchor.getBoundingClientRect();
+      const menu = dialog.getBoundingClientRect();
+      const below = trigger.bottom + 6;
+      const above = trigger.top - menu.height - 6;
+      const y = below + menu.height <= bottom - margin ? below : above;
+      const x = Math.max(left + margin,
+        Math.min(trigger.right - menu.width, right - menu.width - margin));
+      dialog.style.left = `${x}px`;
+      dialog.style.top = `${Math.max(top + margin,
+        Math.min(y, bottom - menu.height - margin))}px`;
+      dialog.style.right = "auto";
+    }
+    position();
+    window.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("resize", position);
+    window.visualViewport?.addEventListener("scroll", position);
+    return () => {
+      window.removeEventListener("resize", position);
+      window.visualViewport?.removeEventListener("resize", position);
+      window.visualViewport?.removeEventListener("scroll", position);
+      dialog.close();
+    };
+  }, [anchor]);
   return (
     <dialog
       ref={ref}
-      className="sort-popover"
+      className={`sort-popover ${className}`}
       aria-label={title}
       onCancel={(event) => {
         event.preventDefault();
@@ -151,7 +192,13 @@ export function PopoverMenu({
         if (event.target === event.currentTarget) close();
       }}
     >
-      <div className="sort-popover-title">{title}</div>
+      <div
+        className={`popover-heading ${hideTitle ? "sr-only" : "sort-popover-title"}`}
+        ref={headingRef}
+        tabIndex={-1}
+      >
+        {title}
+      </div>
       <div className="sort-popover-options">{children}</div>
     </dialog>
   );

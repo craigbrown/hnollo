@@ -70,7 +70,19 @@ export function sanitize(value: string) {
 export const itemUrl = (id: number) =>
   `https://news.ycombinator.com/item?id=${id}`;
 
+function appUrl(path: string) {
+  const url = new URL(window.location.href);
+  url.search = "";
+  url.hash = path;
+  return url.href;
+}
+
+export function appPostUrl(id: number, commentId?: number) {
+  return appUrl(`/item/${id}${commentId ? `/comment/${commentId}` : ""}`);
+}
+
 export const userPath = (name: string) => `#/user/${encodeURIComponent(name)}`;
+export const appUserUrl = (name: string) => appUrl(userPath(name));
 export const userUrl = (name: string) =>
   `https://news.ycombinator.com/user?id=${encodeURIComponent(name)}`;
 export function accountAge(created: number) {

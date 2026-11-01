@@ -13,6 +13,7 @@ export interface HNItem {
   deleted?: boolean;
   dead?: boolean;
 }
+export type ItemActionHandler = (item: HNItem, anchor?: HTMLElement) => void;
 export type Feed = "top" | "ask" | "show" | "job";
 export type StoryOrder = "hot" | "top" | "new";
 export type TopPeriod = "hour" | "day" | "week" | "month" | "year" | "all";
