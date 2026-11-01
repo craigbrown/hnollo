@@ -105,7 +105,7 @@ export async function getCommentContext(id: number, refresh = false) {
 }
 export async function getFeed(
   feed: Feed,
-  order: StoryOrder = "hot",
+  order: StoryOrder = "ranked",
   signal?: AbortSignal,
 ) {
   const endpoint = feed === "top" && order === "new" ? "new" : feed;

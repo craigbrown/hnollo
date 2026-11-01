@@ -71,7 +71,7 @@ export function SettingsIcon(props: Props) {
     </Frame>
   );
 }
-export function CommentSortIcon(props: Props) {
+export function TopSortIcon(props: Props) {
   return (
     <Frame {...props}>
       <path

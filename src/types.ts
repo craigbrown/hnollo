@@ -15,8 +15,8 @@ export interface HNItem {
 }
 export type ItemActionHandler = (item: HNItem, anchor?: HTMLElement) => void;
 export type Feed = "top" | "ask" | "show" | "job";
-export type StoryOrder = "hot" | "top" | "new";
-export type TopPeriod = "hour" | "day" | "week" | "month" | "year" | "all";
+export type StoryOrder = "ranked" | "top" | "new";
+export type TopPeriod = "hour" | "day" | "2days" | "week" | "month" | "year" | "all";
 export const topPeriods: {
   id: TopPeriod;
   name: string;
@@ -25,6 +25,7 @@ export const topPeriods: {
 }[] = [
   { id: "hour", name: "Hour", seconds: 3600, calendar: "60" },
   { id: "day", name: "Day", seconds: 86400, calendar: "1" },
+  { id: "2days", name: "2 Days", seconds: 172800, calendar: "2" },
   { id: "week", name: "Week", seconds: 604800, calendar: "7" },
   { id: "month", name: "Month", seconds: 2592000, calendar: "31" },
   { id: "year", name: "Year", seconds: 31536000, calendar: "365" },
@@ -32,10 +33,10 @@ export const topPeriods: {
 ];
 export const feedPath = (
   feed: Feed,
-  order: StoryOrder = "hot",
+  order: StoryOrder = "ranked",
   period: TopPeriod = "day",
 ) =>
-  `/feed/${feed}${order === "hot" ? "" : order === "new" ? "/new" : `/top/${period}`}`;
+  `/feed/${feed}${order === "ranked" ? "" : order === "new" ? "/new" : `/top/${period}`}`;
 export const feeds: { id: Feed; name: string; description: string }[] = [
   { id: "top", name: "News", description: "The Hacker News front page" },
   { id: "ask", name: "Ask HN", description: "Questions for the community" },

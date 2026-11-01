@@ -18,7 +18,6 @@ import {
   CircleUserRound,
   Copy,
   EyeOff,
-  Flame,
   Home,
   Layers,
   MessageCircle,
@@ -28,7 +27,6 @@ import {
   Share,
   Sparkles,
   Trash2,
-  TrendingUp,
   Trophy,
 } from "lucide-react";
 import type { HNItem, Feed, UserSection, StoryOrder, TopPeriod, UserActivity } from "./types";
@@ -49,7 +47,7 @@ import { ScrollSurface } from "./components/ScrollSurface";
 import { navigate as nav, goBack, switchTab, useTabNavigation } from "./navigation";
 import type { TabId } from "./navigation";
 import {
-  CommentSortIcon,
+  TopSortIcon,
   HistoryIcon,
   PostsIcon,
   SavedIcon,
@@ -108,9 +106,9 @@ export function parseRoute(hash: string): Route {
       ? "new"
       : path[1] === "best"
         ? "top"
-        : ["hot", "top", "new"].includes(path[2])
+        : ["ranked", "top", "new"].includes(path[2])
           ? (path[2] as StoryOrder)
-          : "hot";
+          : "ranked";
   const period =
     path[1] === "best"
       ? "all"
@@ -428,15 +426,15 @@ function TabContent({ hash, active, tabId, destinations }: {
                       ? `Top · ${topPeriods.find((option) => option.id === route.period)?.name}`
                       : route.order === "new"
                         ? "New"
-                        : "Hot"
+                        : "Ranked"
                   }
                 >
                   {route.order === "top" ? (
-                    <Trophy size={25} strokeWidth={1.4} />
+                    <TopSortIcon size={25} />
                   ) : route.order === "new" ? (
                     <Clock3 size={25} strokeWidth={1.4} />
                   ) : (
-                    <Flame size={25} strokeWidth={1.4} />
+                    <Trophy size={25} strokeWidth={1.4} />
                   )}
                 </button>
                 <button
@@ -454,8 +452,13 @@ function TabContent({ hash, active, tabId, destinations }: {
                   className="icon-button nav-icon"
                   onClick={(event) => openMenu("sort", event.currentTarget)}
                   aria-label="Sort comments"
+                  title={newest ? "New" : "Ranked"}
                 >
-                  <CommentSortIcon size={27} />
+                  {newest ? (
+                    <Clock3 size={25} strokeWidth={1.4} />
+                  ) : (
+                    <Trophy size={25} strokeWidth={1.4} />
+                  )}
                 </button>
                 <button
                   className="icon-button nav-icon"
@@ -738,9 +741,9 @@ function TabContent({ hash, active, tabId, destinations }: {
       )}
       {sheet === "feed-sort" && route.type === "feed" && (
         <PopoverMenu title="Sort by…" anchor={actionAnchor} close={closeSheet}>
-          {(["hot", "top", "new"] as const).map((order) => {
+          {(["ranked", "top", "new"] as const).map((order) => {
             const Icon =
-              order === "hot" ? Flame : order === "top" ? Trophy : Clock3;
+              order === "ranked" ? Trophy : order === "top" ? TopSortIcon : Clock3;
             return (
               <button
                 key={order}
@@ -756,7 +759,7 @@ function TabContent({ hash, active, tabId, destinations }: {
               >
                 <Icon size={23} strokeWidth={1.4} />
                 <span>
-                  {order === "hot" ? "Hot" : order === "top" ? "Top" : "New"}
+                  {order === "ranked" ? "Ranked" : order === "top" ? "Top" : "New"}
                 </span>
               </button>
             );
@@ -786,23 +789,25 @@ function TabContent({ hash, active, tabId, destinations }: {
       {sheet === "sort" && (
         <PopoverMenu title="Sort comments" className="action-popover" anchor={actionAnchor} close={closeSheet}>
           <button
+            aria-pressed={!newest}
             onClick={() => {
               setNewest(false);
               closeSheet();
             }}
           >
-            <TrendingUp size={20} />
-            <span>Top (Hacker News order)</span>
+            <Trophy size={23} strokeWidth={1.4} />
+            <span>Ranked</span>
             {!newest && <Check size={19} />}
           </button>
           <button
+            aria-pressed={newest}
             onClick={() => {
               setNewest(true);
               closeSheet();
             }}
           >
-            <Clock3 size={20} />
-            <span>Newest first</span>
+            <Clock3 size={23} strokeWidth={1.4} />
+            <span>New</span>
             {newest && <Check size={19} />}
           </button>
         </PopoverMenu>
