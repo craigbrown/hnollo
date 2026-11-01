@@ -40,6 +40,7 @@ import { Sheet, PopoverMenu } from "./components/Common";
 import { FeedView, LibraryView } from "./components/FeedView";
 import { SearchView } from "./components/SearchView";
 import { SettingsView } from "./components/SettingsView";
+import { PrivacyView } from "./components/PrivacyView";
 import { ThreadView } from "./components/ThreadView";
 import { PullToRefresh } from "./components/PullToRefresh";
 import { UserProfile } from "./components/UserProfile";
@@ -57,9 +58,11 @@ type Route =
   | { type: "feed"; feed: Feed; order: StoryOrder; period: TopPeriod }
   | { type: "item"; id: number }
   | { type: "user"; name: string; section: UserSection }
-  | { type: "feeds" | "saved" | "history" | "search" | "settings" };
+  | { type: "feeds" | "saved" | "history" | "search" | "settings" | "privacy" };
 export function parseRoute(hash: string): Route {
   const path = hash.replace(/^#\/?/, "").split("/");
+  if (path[0] === "settings" && path[1] === "privacy")
+    return { type: "privacy" };
   if (
     path[0] === "item" &&
     /^\d+$/.test(path[1] ?? "") &&
@@ -241,7 +244,7 @@ export default function App() {
   }, [state.preferences.theme]);
   useLayoutEffect(() => {
     scrollRef.current?.scrollTo({
-      top: positions.current.get(hash) ?? 0,
+      top: route.type === "privacy" ? 0 : positions.current.get(hash) ?? 0,
       behavior: "instant",
     });
   }, [hash, thread]);
@@ -260,12 +263,14 @@ export default function App() {
   }, [hash, thread?.title]);
   useEffect(() => () => clearTimeout(toastTimer.current), []);
   const activeTab =
-    route.type === "item" ||
-    route.type === "feed" ||
-    route.type === "feeds" ||
-    route.type === "user"
-      ? "posts"
-      : route.type;
+    route.type === "privacy"
+      ? "settings"
+      : route.type === "item" ||
+          route.type === "feed" ||
+          route.type === "feeds" ||
+          route.type === "user"
+        ? "posts"
+        : route.type;
   const feed =
     route.type === "feed"
       ? feeds.find((feed) => feed.id === route.feed)!
@@ -286,6 +291,7 @@ export default function App() {
                 history: "History",
                 search: "Search",
                 settings: "Settings",
+                privacy: "Privacy",
               }[route.type];
   function refreshPage() {
     closeSheet();
@@ -294,6 +300,7 @@ export default function App() {
   }
   function goBack() {
     if (window.history.state?.hnolloNavigation) window.history.back();
+    else if (route.type === "privacy") nav("/settings");
     else nav(previousPage.current || "/feed/top");
   }
   async function share(item: HNItem) {
@@ -342,118 +349,127 @@ export default function App() {
         event.preventDefault();
         nav(href);
       }}
-      className={`app-shell text-${state.preferences.textSize} ${state.preferences.dimRead ? "dim-read" : ""}`}
+      className={`app-shell text-${state.preferences.textSize} ${state.preferences.dimRead ? "dim-read" : ""} ${route.type === "privacy" ? "privacy-screen" : ""}`}
     >
-      <header className="navigation-bar">
-        <div className="nav-left">
-          {route.type === "item" || route.type === "user" ? (
-            <button
-              className="back-button"
-              onClick={goBack}
-              aria-label={route.type === "item" ? "Back to posts" : "Back"}
-            >
-              <ChevronLeft size={29} strokeWidth={1.8} />
-              <span>Back</span>
-            </button>
-          ) : route.type === "feed" ? (
-            <button
-              className="back-button"
-              aria-label="Back to feeds"
-              onClick={() => nav("/feeds")}
-            >
-              <ChevronLeft size={29} strokeWidth={1.8} />
-              <span>Feeds</span>
-            </button>
-          ) : null}
-        </div>
-        {route.type === "feed" ? (
-          <button
-            className="navigation-title"
-            onClick={() => setSheet("feeds")}
-            aria-label="Choose feed"
-          >
-            {title}
-            <ChevronDown size={14} strokeWidth={2.3} />
-          </button>
-        ) : (
-          <div className="navigation-heading">
-            <div className="navigation-title">{title}</div>
-            {route.type === "item" && threadNew > 0 && (
-              <span className="navigation-subtitle">{threadNew} New</span>
-            )}
-          </div>
-        )}
-        <div className="nav-right">
-          {route.type === "feed" && (
-            <>
+      {route.type !== "privacy" && (
+        <header className="navigation-bar">
+          <div className="nav-left">
+            {route.type === "item" || route.type === "user" ? (
               <button
-                className="icon-button nav-icon"
-                onClick={() => setSheet("feed-sort")}
-                aria-label="Sort stories"
-                title={
-                  route.order === "top"
-                    ? `Top · ${topPeriods.find((option) => option.id === route.period)?.name}`
-                    : route.order === "new"
-                      ? "New"
-                      : "Hot"
+                className="back-button"
+                onClick={goBack}
+                aria-label={
+                  route.type === "item" ? "Back to posts" : "Back"
                 }
               >
-                {route.order === "top" ? (
-                  <Trophy size={25} strokeWidth={1.4} />
-                ) : route.order === "new" ? (
-                  <Clock3 size={25} strokeWidth={1.4} />
-                ) : (
-                  <Flame size={25} strokeWidth={1.4} />
-                )}
+                <ChevronLeft size={29} strokeWidth={1.8} />
+                <span>Back</span>
               </button>
+            ) : route.type === "feed" ? (
+              <button
+                className="back-button"
+                aria-label="Back to feeds"
+                onClick={() => nav("/feeds")}
+              >
+                <ChevronLeft size={29} strokeWidth={1.8} />
+                <span>Feeds</span>
+              </button>
+            ) : null}
+          </div>
+          {route.type === "feed" ? (
+            <button
+              className="navigation-title"
+              onClick={() => setSheet("feeds")}
+              aria-label="Choose feed"
+            >
+              {title}
+              <ChevronDown size={14} strokeWidth={2.3} />
+            </button>
+          ) : (
+            <div className="navigation-heading">
+              <div className="navigation-title">{title}</div>
+              {route.type === "item" && threadNew > 0 && (
+                <span className="navigation-subtitle">{threadNew} New</span>
+              )}
+            </div>
+          )}
+          <div className="nav-right">
+            {route.type === "feed" && (
+              <>
+                <button
+                  className="icon-button nav-icon"
+                  onClick={() => setSheet("feed-sort")}
+                  aria-label="Sort stories"
+                  title={
+                    route.order === "top"
+                      ? `Top · ${topPeriods.find((option) => option.id === route.period)?.name}`
+                      : route.order === "new"
+                        ? "New"
+                        : "Hot"
+                  }
+                >
+                  {route.order === "top" ? (
+                    <Trophy size={25} strokeWidth={1.4} />
+                  ) : route.order === "new" ? (
+                    <Clock3 size={25} strokeWidth={1.4} />
+                  ) : (
+                    <Flame size={25} strokeWidth={1.4} />
+                  )}
+                </button>
+                <button
+                  className="icon-button nav-icon"
+                  onClick={() => setSheet("more")}
+                  aria-label="Feed options"
+                >
+                  <MoreHorizontal size={25} />
+                </button>
+              </>
+            )}
+            {route.type === "item" && (
+              <>
+                <button
+                  className="icon-button nav-icon"
+                  onClick={() => setSheet("sort")}
+                  aria-label="Sort comments"
+                >
+                  <CommentSortIcon size={27} />
+                </button>
+                <button
+                  className="icon-button nav-icon"
+                  onClick={() => thread && setActionItem(thread)}
+                  aria-label="Discussion options"
+                  disabled={!thread}
+                >
+                  <MoreHorizontal size={25} />
+                </button>
+              </>
+            )}
+            {route.type === "user" && (
               <button
                 className="icon-button nav-icon"
-                onClick={() => setSheet("more")}
-                aria-label="Feed options"
+                onClick={() => setSheet("user")}
+                aria-label="Profile options"
               >
                 <MoreHorizontal size={25} />
               </button>
-            </>
-          )}
-          {route.type === "item" && (
-            <>
+            )}
+            {route.type === "history" &&
+            (state.history.length > 0 ||
+              state.searches.length > 0 ||
+              Object.keys(state.posts).length > 0 ||
+              Object.keys(state.comments).length > 0 ||
+              Object.keys(state.discussions).length > 0) && (
               <button
                 className="icon-button nav-icon"
-                onClick={() => setSheet("sort")}
-                aria-label="Sort comments"
+                onClick={() => setSheet("clear")}
+                aria-label="Clear reading history"
               >
-                <CommentSortIcon size={27} />
+                <Trash2 size={20} strokeWidth={1.5} />
               </button>
-              <button
-                className="icon-button nav-icon"
-                onClick={() => thread && setActionItem(thread)}
-                aria-label="Discussion options"
-                disabled={!thread}
-              >
-                <MoreHorizontal size={25} />
-              </button>
-            </>
-          )}
-          {route.type === "user" && (
-            <button
-              className="icon-button nav-icon"
-              onClick={() => setSheet("user")}
-              aria-label="Profile options"
-            >
-              <MoreHorizontal size={25} />
-            </button>
-          )}
-          {route.type === "history" && state.history.length > 0 && (
-            <button
-              className="icon-button nav-icon"
-              onClick={() => setSheet("clear")}
-              aria-label="Clear reading history"
-            >
-              <Trash2 size={20} strokeWidth={1.5} />
-            </button>
-          )}
-        </div>
-      </header>
+            )}
+          </div>
+        </header>
+      )}
       {hideRead && route.type === "feed" && (
         <button className="filter-banner" onClick={() => setHideRead(false)}>
           <EyeOff size={13} /> Read posts hidden <span>Show all</span>
@@ -466,7 +482,9 @@ export default function App() {
         onTouchStart={(event) => {
           const touch = event.touches[0];
           edgeSwipe.current =
-            (route.type === "item" || route.type === "user") &&
+            (route.type === "item" ||
+              route.type === "user" ||
+              route.type === "privacy") &&
             touch.clientX - event.currentTarget.getBoundingClientRect().left <
               26
               ? { x: touch.clientX, y: touch.clientY }
@@ -544,9 +562,8 @@ export default function App() {
           <LibraryView mode={route.type} onActions={setActionItem} />
         )}
         {route.type === "search" && <SearchView onActions={setActionItem} />}
-        {route.type === "settings" && (
-          <SettingsView onClear={() => setSheet("clear")} />
-        )}
+        {route.type === "settings" && <SettingsView />}
+        {route.type === "privacy" && <PrivacyView onDone={goBack} />}
         {route.type === "feeds" && (
           <div className="feeds-page">
             <div className="settings-group">
@@ -582,50 +599,52 @@ export default function App() {
           Storage is unavailable. Reading history will last for this session.
         </div>
       )}
-      <nav className="tab-bar" aria-label="Main navigation">
-        {[
-          {
-            id: "posts",
-            name: "Posts",
-            icon: PostsIcon,
-            path: lastFeed.current,
-          },
-          { id: "saved", name: "Saved", icon: SavedIcon, path: "/saved" },
-          {
-            id: "history",
-            name: "History",
-            icon: HistoryIcon,
-            path: "/history",
-          },
-          { id: "search", name: "Search", icon: SearchIcon, path: "/search" },
-          {
-            id: "settings",
-            name: "Settings",
-            icon: SettingsIcon,
-            path: "/settings",
-          },
-        ].map((tab) => (
-          <a
-            key={tab.id}
-            href={`#${tab.path}`}
-            className={`tab ${activeTab === tab.id ? "active" : ""}`}
-            aria-current={activeTab === tab.id ? "page" : undefined}
-            onClick={(event) => {
-              if (
-                tab.id === activeTab &&
-                route.type !== "item" &&
-                route.type !== "user"
-              ) {
-                event.preventDefault();
-                scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
-              }
-            }}
-          >
-            <tab.icon size={27} />
-            <span>{tab.name}</span>
-          </a>
-        ))}
-      </nav>
+      {route.type !== "privacy" && (
+        <nav className="tab-bar" aria-label="Main navigation">
+          {[
+            {
+              id: "posts",
+              name: "Posts",
+              icon: PostsIcon,
+              path: lastFeed.current,
+            },
+            { id: "saved", name: "Saved", icon: SavedIcon, path: "/saved" },
+            {
+              id: "history",
+              name: "History",
+              icon: HistoryIcon,
+              path: "/history",
+            },
+            { id: "search", name: "Search", icon: SearchIcon, path: "/search" },
+            {
+              id: "settings",
+              name: "Settings",
+              icon: SettingsIcon,
+              path: "/settings",
+            },
+          ].map((tab) => (
+            <a
+              key={tab.id}
+              href={`#${tab.path}`}
+              className={`tab ${activeTab === tab.id ? "active" : ""}`}
+              aria-current={activeTab === tab.id ? "page" : undefined}
+              onClick={(event) => {
+                if (
+                  tab.id === activeTab &&
+                  route.type !== "item" &&
+                  route.type !== "user"
+                ) {
+                  event.preventDefault();
+                  scrollRef.current?.scrollTo({ top: 0, behavior: "smooth" });
+                }
+              }}
+            >
+              <tab.icon size={27} />
+              <span>{tab.name}</span>
+            </a>
+          ))}
+        </nav>
+      )}
       {toast && (
         <div className="toast" role="status">
           <Check size={17} />
@@ -797,6 +816,7 @@ export default function App() {
       {sheet === "clear" && (
         <Sheet
           title="Clear all reading history on this device?"
+          description="This clears read posts, comments, and search history. Saved posts are kept."
           close={closeSheet}
         >
           <button

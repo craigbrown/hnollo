@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 import type { ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { sanitize } from "../utils";
@@ -74,14 +74,17 @@ export function Empty({
 }
 export function Sheet({
   title,
+  description,
   children,
   close,
 }: {
   title: string;
+  description?: string;
   children: ReactNode;
   close: () => void;
 }) {
   const ref = useRef<HTMLDialogElement>(null);
+  const descriptionId = useId();
   useEffect(() => {
     const dialog = ref.current!;
     dialog.showModal();
@@ -92,6 +95,7 @@ export function Sheet({
       ref={ref}
       className="action-sheet"
       aria-label={title}
+      aria-describedby={description ? descriptionId : undefined}
       onCancel={(event) => {
         event.preventDefault();
         close();
@@ -102,7 +106,14 @@ export function Sheet({
     >
       <div className="sheet-surface">
         <div className="sheet-handle" />
-        <div className="sheet-heading">{title}</div>
+        <div className="sheet-heading">
+          {title}
+          {description && (
+            <p id={descriptionId} className="sheet-description">
+              {description}
+            </p>
+          )}
+        </div>
         <div className="sheet-options">{children}</div>
         <button className="sheet-cancel" onClick={close}>
           Cancel

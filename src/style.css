@@ -433,28 +433,76 @@ a:active {
 .feeds-page {
   padding: 0 0 16px;
 }
-.about-app {
+.privacy-page {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: calc(100dvh - var(--privacy-footer-height));
+  padding: calc(36px + env(safe-area-inset-top)) 24px 24px;
+  background: var(--privacy-background);
   text-align: center;
-  padding: 29px 20px 11px;
 }
-.about-app img {
-  border-radius: 18px;
-  box-shadow: 0 3px 9px #007aff20;
+.privacy-explanation {
+  width: 100%;
+  max-width: 380px;
 }
-.about-app h1 {
-  font-size: 24px;
+.privacy-symbol {
+  display: block;
+  margin: 0 auto 14px;
+  color: var(--blue);
+}
+.privacy-page h1 {
+  margin: 0 0 22px;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1.15;
   letter-spacing: -0.6px;
-  margin: 12px 0 7px;
-  font-weight: 650;
 }
-.about-app p {
-  color: var(--secondary);
-  font-size: 14px;
-  margin: 0 0 5px;
+.privacy-copy {
+  font-size: var(--post-size);
+  line-height: 1.35;
 }
-.about-app > span {
-  color: var(--secondary);
-  font-size: 12px;
+.privacy-copy p {
+  margin: 0;
+}
+.privacy-copy p + p {
+  margin-top: 18px;
+}
+.privacy-actions {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 14px 24px max(22px, env(safe-area-inset-bottom));
+  background: var(--privacy-background);
+  z-index: 4;
+}
+.privacy-done {
+  display: block;
+  min-height: 48px;
+  width: 100%;
+  max-width: 380px;
+  margin: 0 auto;
+  padding: 12px 20px;
+  border-radius: 10px;
+  background: var(--blue);
+  color: white;
+  font-size: 17px;
+  font-weight: 600;
+}
+.privacy-screen {
+  --privacy-background: #fff;
+  --privacy-footer-height: calc(62px + max(22px, env(safe-area-inset-bottom)));
+  background: var(--privacy-background);
+}
+:root[data-theme="dark"] .privacy-screen {
+  --privacy-background: #202127;
+}
+.privacy-screen #scroll-view {
+  padding-top: 0;
+  padding-bottom: var(--privacy-footer-height);
+  scroll-padding-top: 24px;
+  background: var(--privacy-background);
 }
 .group-label {
   padding: 26px 16px 8px;
@@ -523,28 +571,38 @@ a:active {
   color: var(--tertiary);
   flex-shrink: 0;
 }
-.settings-row select {
-  margin-left: auto;
+.settings-picker > span {
+  pointer-events: none;
+}
+.settings-picker select {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   appearance: none;
   border: none;
   color: var(--secondary);
   text-align: right;
+  text-align-last: right;
   background: none;
   font-size: 14px;
-  padding: 5px 0 5px 8px;
+  padding: 7px 36px 7px 140px;
   cursor: pointer;
 }
-.settings-row select + svg {
-  margin-left: -6px;
+.settings-picker select + svg {
+  position: absolute;
+  right: 15px;
+  pointer-events: none;
+}
+.settings-picker select:focus-visible {
+  outline-offset: -3px;
+  border-radius: 6px;
 }
 .settings-value {
   margin-left: auto;
   color: var(--secondary);
   font-size: 12px;
   text-align: right;
-}
-.clear-history {
-  color: var(--blue);
 }
 .group-note {
   color: var(--secondary);
@@ -598,18 +656,6 @@ a:active {
 .switch-input:focus-visible + .switch {
   outline: 2px solid var(--blue);
   outline-offset: 3px;
-}
-.version-note {
-  text-align: center;
-  padding: 30px 16px 14px;
-  color: var(--secondary);
-  font-size: 10px;
-  line-height: 2;
-  letter-spacing: 1px;
-}
-.version-note span {
-  letter-spacing: 0;
-  font-size: 11px;
 }
 .feed-row {
   display: flex;
@@ -707,6 +753,10 @@ a:active {
   background: var(--bar);
   border-radius: 0 0 13px 13px;
   overflow: hidden;
+}
+.sheet-description {
+  margin: 7px 0 0;
+  line-height: 1.45;
 }
 .sheet-options > button,
 .sheet-options > a {
