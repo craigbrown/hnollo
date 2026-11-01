@@ -13,6 +13,11 @@ import {
 import { version } from "../../package.json";
 import { reader, useReader } from "../store";
 import type { Preferences } from "../store";
+
+const releaseVersion = import.meta.env.VITE_APP_VERSION?.trim() || version;
+const buildNumber = import.meta.env.VITE_BUILD_NUMBER;
+const appVersion = buildNumber ? `${releaseVersion} (build ${buildNumber})` : releaseVersion;
+
 export function SettingsView() {
   const prefs = useReader().preferences;
   return (
@@ -136,7 +141,7 @@ export function SettingsView() {
             height="28"
           />
           <span>Hnollo</span>
-          <span className="settings-value">{version}</span>
+          <span className="settings-value">{appVersion}</span>
         </div>
         <a className="settings-row" href="#/settings/privacy">
           <span className="settings-icon green">
