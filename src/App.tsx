@@ -211,7 +211,6 @@ function TabContent({ hash, active, tabId, destinations }: {
   const [hideRead, setHideRead] = useState(false);
   const [newest, setNewest] = useState(false);
   const [threadNew, setThreadNew] = useState(0);
-  const edgeSwipe = useRef<{ x: number; y: number } | null>(null);
   const [thread, setThread] = useState<HNItem | undefined>(() =>
     route.type === "item" ? peekItem(route.id) : undefined,
   );
@@ -506,31 +505,6 @@ function TabContent({ hash, active, tabId, destinations }: {
         className="scroll-view"
         tabIndex={0}
         ref={contentRef}
-        onTouchStart={(event) => {
-          const touch = event.touches[0];
-          edgeSwipe.current =
-            (route.type === "item" ||
-              route.type === "user" ||
-              route.type === "privacy") &&
-            touch.clientX - event.currentTarget.getBoundingClientRect().left <
-              26
-              ? { x: touch.clientX, y: touch.clientY }
-              : null;
-        }}
-        onTouchEnd={(event) => {
-          const start = edgeSwipe.current;
-          edgeSwipe.current = null;
-          if (!start) return;
-          const touch = event.changedTouches[0];
-          if (
-            touch.clientX - start.x > 80 &&
-            Math.abs(touch.clientY - start.y) < 50
-          )
-            goBack();
-        }}
-        onTouchCancel={() => {
-          edgeSwipe.current = null;
-        }}
         key={hash}
       >
         <PullToRefresh
