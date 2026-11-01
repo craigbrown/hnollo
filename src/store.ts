@@ -5,6 +5,8 @@ export const STORAGE_KEY = "hnollo:v1";
 export interface Preferences {
   theme: "light" | "dark" | "system";
   layout: "large" | "compact";
+  historyLayout: "large" | "compact";
+  savedLayout?: "large" | "compact";
   textSize: "small" | "medium" | "large";
   twitterDisplay: "embedded" | "previews";
   youtubeDisplay: "embedded" | "previews";
@@ -34,6 +36,7 @@ export interface ReaderState {
 const defaults: Preferences = {
   theme: "system",
   layout: "large",
+  historyLayout: "compact",
   textSize: "medium",
   twitterDisplay: "embedded",
   youtubeDisplay: "embedded",
@@ -141,6 +144,12 @@ export function parseState(raw: string | null): ReaderState {
         layout: ["large", "compact"].includes(p.layout)
           ? p.layout
           : defaults.layout,
+        historyLayout: ["large", "compact"].includes(p.historyLayout)
+          ? p.historyLayout
+          : defaults.historyLayout,
+        savedLayout: ["large", "compact"].includes(p.savedLayout)
+          ? p.savedLayout
+          : undefined,
         textSize: ["small", "medium", "large"].includes(p.textSize)
           ? p.textSize
           : defaults.textSize,

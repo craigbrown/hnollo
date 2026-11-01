@@ -248,9 +248,11 @@ export function FeedView({
 export function LibraryView({
   mode,
   onActions,
+  layout,
 }: {
   mode: "saved" | "history";
   onActions: ItemActionHandler;
+  layout: "large" | "compact";
 }) {
   const state = useReader();
   const items = state[mode];
@@ -260,7 +262,7 @@ export function LibraryView({
   return items.length ? (
     <>
       {items.map((item) => (
-        <Post item={item} onActions={onActions} key={item.id} />
+        <Post item={item} onActions={onActions} layout={layout} key={item.id} />
       ))}
     </>
   ) : (

@@ -22,17 +22,19 @@ export function Post({
   onActions,
   onShare,
   detail = false,
+  layout,
 }: {
   item: HNItem;
   onActions: ItemActionHandler;
   onShare?: (item: HNItem) => void;
   detail?: boolean;
+  layout?: "large" | "compact";
 }) {
   const state = useReader();
   item = peekItem(item.id) ?? item;
   const saved = state.saved.some((post) => post.id === item.id);
   const isRead = !!state.posts[item.id];
-  const compact = !detail && state.preferences.layout === "compact";
+  const compact = !detail && (layout ?? state.preferences.layout) === "compact";
   const newCount = newCommentCount(item, state.discussions[item.id]);
   const url = safeUrl(item.url);
   const title = decode(item.title);

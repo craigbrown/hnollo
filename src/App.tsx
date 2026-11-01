@@ -168,8 +168,12 @@ function TabContent({ hash, active, tabId, destinations }: {
     | "top-period"
     | "clear"
     | "user"
+    | "library"
     | null
   >(null);
+  const currentLibraryLayout = tabId === "history"
+    ? state.preferences.historyLayout
+    : state.preferences.savedLayout ?? state.preferences.layout;
   const [actionItem, setActionItem] = useState<HNItem | null>(null);
   const [actionAnchor, setActionAnchor] = useState<HTMLElement | null>(null);
   const openActions = useCallback((item: HNItem, anchor?: HTMLElement) => {
@@ -485,18 +489,13 @@ function TabContent({ hash, active, tabId, destinations }: {
                 <MoreHorizontal size={25} />
               </button>
             )}
-            {route.type === "history" &&
-            (state.history.length > 0 ||
-              state.searches.length > 0 ||
-              Object.keys(state.posts).length > 0 ||
-              Object.keys(state.comments).length > 0 ||
-              Object.keys(state.discussions).length > 0) && (
+            {(route.type === "saved" || route.type === "history") && (
               <button
                 className="icon-button nav-icon"
-                onClick={() => setSheet("clear")}
-                aria-label="Clear reading history"
+                onClick={(event) => openMenu("library", event.currentTarget)}
+                aria-label={`${route.type === "history" ? "History" : "Saved"} options`}
               >
-                <Trash2 size={20} strokeWidth={1.5} />
+                <MoreHorizontal size={25} />
               </button>
             )}
           </div>
@@ -590,7 +589,7 @@ function TabContent({ hash, active, tabId, destinations }: {
           />
         )}
         {(route.type === "saved" || route.type === "history") && (
-          <LibraryView mode={route.type} onActions={openActions} />
+          <LibraryView mode={route.type} layout={currentLibraryLayout} onActions={openActions} />
         )}
         {route.type === "search" && <SearchView onActions={openActions} />}
         {route.type === "settings" && <SettingsView />}
@@ -739,6 +738,33 @@ function TabContent({ hash, active, tabId, destinations }: {
                 : "Use Large Posts"}
             </span>
           </button>
+        </PopoverMenu>
+      )}
+      {sheet === "library" && (route.type === "saved" || route.type === "history") && (
+        <PopoverMenu title={`${route.type === "history" ? "History" : "Saved"} options`} className="action-popover" hideTitle anchor={actionAnchor} close={closeSheet}>
+          <button
+            onClick={() => {
+              const layout = currentLibraryLayout === "large" ? "compact" : "large";
+              reader.setPreferences(route.type === "history"
+                ? { historyLayout: layout } : { savedLayout: layout });
+              closeSheet();
+            }}
+          >
+            <Layers size={20} />
+            <span>{currentLibraryLayout === "large" ? "Use Compact Posts" : "Use Large Posts"}</span>
+          </button>
+          {route.type === "history" && (
+            state.history.length > 0 ||
+            state.searches.length > 0 ||
+            Object.keys(state.posts).length > 0 ||
+            Object.keys(state.comments).length > 0 ||
+            Object.keys(state.discussions).length > 0
+          ) && (
+            <button className="destructive" onClick={() => setSheet("clear")}>
+              <Trash2 size={20} strokeWidth={1.5} />
+              <span>Clear reading history</span>
+            </button>
+          )}
         </PopoverMenu>
       )}
       {sheet === "feed-sort" && route.type === "feed" && (

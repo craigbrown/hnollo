@@ -808,7 +808,8 @@ a:active {
 .action-sheet :is(a, button):focus-visible {
   outline-offset: -4px;
 }
-.sheet-options .destructive {
+.sheet-options .destructive,
+.action-popover .destructive {
   color: #ff3b30;
 }
 .sheet-cancel {
