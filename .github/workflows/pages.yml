@@ -28,6 +28,10 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v6
+      - name: Validate release version
+        run: bash .github/scripts/release.sh check
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
       - name: Set up Node.js
         uses: actions/setup-node@v6
         with:
@@ -49,3 +53,20 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+
+  release:
+    name: Publish GitHub Release
+    needs: deploy
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Check out deployed commit
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ github.sha }}
+      - name: Create GitHub Release and tag
+        run: bash .github/scripts/release.sh create
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
