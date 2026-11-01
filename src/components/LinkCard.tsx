@@ -7,6 +7,8 @@ import type { LinkPreview } from "../previews";
 import { useScrollSurface } from "./ScrollSurface";
 import { tweetId } from "../tweets";
 import { TweetEmbed } from "./TweetEmbed";
+import { youtubeVideo } from "../youtube";
+import { YouTubeEmbed } from "./YouTubeEmbed";
 
 // Known publishers have deterministic image URLs. Other pages are inspected
 // for Open Graph/Twitter metadata when their CORS policy permits browser access.
@@ -21,21 +23,27 @@ export function previewImage(raw?: string): string | undefined {
     if (owner && repo && /^[\w.-]+$/.test(owner) && /^[\w.-]+$/.test(repo))
       return `https://opengraph.githubassets.com/hnollo/${owner}/${repo}`;
   }
-  const videoId =
-    host === "youtu.be"
-      ? url.pathname.slice(1)
-      : ["youtube.com", "m.youtube.com"].includes(host)
-        ? (url.searchParams.get("v") ??
-          url.pathname.match(/^\/(?:shorts|embed)\/([^/]+)/)?.[1])
-        : undefined;
-  if (videoId && /^[\w-]{11}$/.test(videoId))
-    return `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+  const video = youtubeVideo(url.href);
+  if (video) return `https://i.ytimg.com/vi/${video.id}/hqdefault.jpg`;
 }
 export function LinkCard({ item, title }: { item: HNItem; title: string }) {
-  const { twitterDisplay } = useReader().preferences;
+  const { twitterDisplay, youtubeDisplay } = useReader().preferences;
   const id = tweetId(item.url);
+  const video = youtubeVideo(item.url);
   const [failedTweet, setFailedTweet] = useState<string>();
+  const [failedVideo, setFailedVideo] = useState<string>();
   const failEmbed = useCallback(() => setFailedTweet(id), [id]);
+  const failVideo = useCallback(() => setFailedVideo(item.url), [item.url]);
+  if (youtubeDisplay === "embedded" && video && failedVideo !== item.url)
+    return (
+      <YouTubeEmbed
+        id={video.id}
+        start={video.start}
+        title={title}
+        onFailure={failVideo}
+        fallback={<PreviewCard item={item} title={title} discover={false} />}
+      />
+    );
   if (twitterDisplay === "embedded" && id && failedTweet !== id)
     return (
       <TweetEmbed

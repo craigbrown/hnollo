@@ -7,6 +7,7 @@ export interface Preferences {
   layout: "large" | "compact";
   textSize: "small" | "medium" | "large";
   twitterDisplay: "embedded" | "previews";
+  youtubeDisplay: "embedded" | "previews";
   dimRead: boolean;
 }
 export interface DiscussionVisit {
@@ -35,6 +36,7 @@ const defaults: Preferences = {
   layout: "large",
   textSize: "medium",
   twitterDisplay: "embedded",
+  youtubeDisplay: "embedded",
   dimRead: true,
 };
 export function emptyState(): ReaderState {
@@ -145,6 +147,9 @@ export function parseState(raw: string | null): ReaderState {
         twitterDisplay: ["embedded", "previews"].includes(p.twitterDisplay)
           ? p.twitterDisplay
           : defaults.twitterDisplay,
+        youtubeDisplay: ["embedded", "previews"].includes(p.youtubeDisplay)
+          ? p.youtubeDisplay
+          : defaults.youtubeDisplay,
         dimRead: typeof p.dimRead === "boolean" ? p.dimRead : defaults.dimRead,
       },
     };

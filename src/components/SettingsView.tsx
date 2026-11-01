@@ -8,6 +8,7 @@ import {
   Smartphone,
   Type,
   Twitter,
+  Youtube,
 } from "lucide-react";
 import { version } from "../../package.json";
 import { reader, useReader } from "../store";
@@ -99,6 +100,23 @@ export function SettingsView() {
             value={prefs.twitterDisplay}
             onChange={(event) => reader.setPreferences({
               twitterDisplay: event.target.value as Preferences["twitterDisplay"],
+            })}
+          >
+            <option value="embedded">Embedded</option>
+            <option value="previews">Link preview</option>
+          </select>
+          <ChevronRight size={15} />
+        </label>
+        <label className="settings-row settings-picker">
+          <span className="settings-icon red">
+            <Youtube size={18} />
+          </span>
+          <span>Display YouTube as</span>
+          <select
+            aria-label="Display YouTube as"
+            value={prefs.youtubeDisplay}
+            onChange={(event) => reader.setPreferences({
+              youtubeDisplay: event.target.value as Preferences["youtubeDisplay"],
             })}
           >
             <option value="embedded">Embedded</option>
