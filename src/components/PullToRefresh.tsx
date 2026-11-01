@@ -1,6 +1,17 @@
 import { useEffect, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { RefreshCw } from "lucide-react";
+
+const REFRESH_THRESHOLD = 120;
+const MAX_PULL = 200;
+const RESTING_HEIGHT = 48;
+
+interface PullGesture {
+  x: number;
+  y: number;
+  started: boolean;
+  triggered: boolean;
+  finished: boolean;
+}
 
 export function PullToRefresh({
   scrollRef,
@@ -16,102 +27,151 @@ export function PullToRefresh({
   onRefresh: () => Promise<void>;
 }) {
   const [distance, setDistance] = useState(0);
-  const gesture = useRef<{ x: number; y: number; started: boolean } | null>(
-    null,
-  );
-  const distanceRef = useRef(0);
+  const [settling, setSettling] = useState(false);
+  const gesture = useRef<PullGesture | null>(null);
+  const pending = useRef(false);
   const refreshingRef = useRef(refreshing);
   refreshingRef.current = refreshing;
   useEffect(() => {
     const scroll = scrollRef.current;
     if (!scroll || disabled) return;
-    function reset() {
+    let disposed = false;
+    let suppressClick = false;
+    function reset(animate = false) {
       gesture.current = null;
-      distanceRef.current = 0;
+      setSettling(animate);
       setDistance(0);
+      scroll!.classList.remove("refresh-gesture");
+    }
+    function beginRefresh(current: PullGesture) {
+      current.triggered = true;
+      pending.current = true;
+      function complete() {
+        pending.current = false;
+        if (disposed) return;
+        // Ignore further movement from this finger until it lifts, so a held
+        // pull cannot open the gap again or start another refresh.
+        current.finished = true;
+        setSettling(true);
+        setDistance(0);
+      }
+      void onRefresh().then(complete, complete);
     }
     function start(event: TouchEvent) {
+      reset();
+      suppressClick = false;
       if (
         event.touches.length !== 1 ||
-        scroll!.scrollTop > 0 ||
-        refreshingRef.current
+        scroll!.scrollTop > 1 ||
+        refreshingRef.current || pending.current
       ) {
-        reset();
         return;
       }
       const touch = event.touches[0];
-      // Leave the horizontal edge gesture and interactive controls alone.
+      // Preserve edge navigation and text editing, while allowing a drag to
+      // start on a post link or button without activating it on release.
       if (
         touch.clientX - scroll!.getBoundingClientRect().left < 26 ||
         (event.target as Element).closest(
-          "button,input,select,textarea,[role=scrollbar]",
+          "input,select,textarea,[contenteditable]:not([contenteditable=false]),[role=scrollbar]",
         )
       )
         return;
-      gesture.current = { x: touch.clientX, y: touch.clientY, started: false };
+      gesture.current = {
+        x: touch.clientX, y: touch.clientY,
+        started: false, triggered: false, finished: false,
+      };
+      scroll!.classList.add("refresh-gesture");
     }
     function move(event: TouchEvent) {
       const initial = gesture.current;
-      if (!initial || event.touches.length !== 1) return;
+      if (!initial) return;
+      if (event.touches.length !== 1) {
+        reset(true);
+        return;
+      }
+      if (initial.finished) {
+        if (event.cancelable) event.preventDefault();
+        return;
+      }
       const dx = event.touches[0].clientX - initial.x;
       const dy = event.touches[0].clientY - initial.y;
       if (
         !initial.started &&
-        ((Math.abs(dx) > 12 && Math.abs(dx) > Math.abs(dy)) ||
+        ((Math.abs(dx) > 8 && Math.abs(dx) > Math.abs(dy)) ||
           dy < 0 ||
-          scroll!.scrollTop > 0)
+          scroll!.scrollTop > 1)
       ) {
-        reset();
+        reset(true);
         return;
       }
+      if (dy <= 0 && !initial.started) return;
+      // Cancel the first downward move before Safari starts native bouncing.
+      if (event.cancelable) event.preventDefault();
       if (dy <= 6 && !initial.started) return;
       initial.started = true;
-      if (event.cancelable) event.preventDefault();
-      distanceRef.current = Math.min(100, Math.max(0, dy * 0.45));
-      setDistance(distanceRef.current);
+      suppressClick = true;
+      const nextDistance = Math.min(MAX_PULL, Math.max(0, dy * 0.45));
+      setDistance(nextDistance);
+      if (nextDistance >= REFRESH_THRESHOLD && !initial.triggered &&
+          !pending.current && !refreshingRef.current)
+        beginRefresh(initial);
     }
     function end(event: TouchEvent) {
       if (gesture.current?.started && event.cancelable) event.preventDefault();
-      const shouldRefresh = distanceRef.current >= 64;
-      reset();
-      if (shouldRefresh && !refreshingRef.current) void onRefresh();
+      reset(true);
     }
+    function click(event: MouseEvent) {
+      if (!suppressClick || event.detail === 0 || !scroll!.contains(event.target as Node))
+        return;
+      suppressClick = false;
+      event.preventDefault();
+      event.stopImmediatePropagation();
+    }
+    reset();
     scroll.addEventListener("touchstart", start, { passive: true });
     scroll.addEventListener("touchmove", move, { passive: false });
     scroll.addEventListener("touchend", end, { passive: false });
-    scroll.addEventListener("touchcancel", reset);
+    scroll.addEventListener("touchcancel", end);
+    document.addEventListener("click", click, true);
     return () => {
+      disposed = true;
+      reset();
       scroll.removeEventListener("touchstart", start);
       scroll.removeEventListener("touchmove", move);
       scroll.removeEventListener("touchend", end);
-      scroll.removeEventListener("touchcancel", reset);
+      scroll.removeEventListener("touchcancel", end);
+      document.removeEventListener("click", click, true);
     };
   }, [scrollRef, routeKey, disabled, onRefresh]);
   if (disabled) return null;
   return (
     <div
-      className={`pull-to-refresh ${distance >= 64 ? "pull-ready" : ""} ${refreshing ? "pull-loading" : ""}`}
-      style={{ height: refreshing ? 48 : distance }}
+      className={`pull-to-refresh ${refreshing ? "pull-loading" : ""} ${settling ? "pull-settling" : ""}`}
+      style={{ height: refreshing ? Math.max(RESTING_HEIGHT, distance) : distance }}
       role="status"
       aria-live="polite"
     >
-      <RefreshCw
-        size={20}
+      <svg
+        className="pull-spinner"
+        viewBox="0 0 24 24"
         aria-hidden="true"
-        style={
-          refreshing
-            ? undefined
-            : { transform: `rotate(${Math.min(180, distance * 2.8)}deg)` }
-        }
-      />
+        style={{ opacity: refreshing ? 1 : Math.min(1, distance / REFRESH_THRESHOLD) }}
+      >
+        {Array.from({ length: 12 }, (_, index) => (
+          <rect
+            key={index}
+            x="11" y="1" width="2" height="6" rx="1"
+            fill="currentColor"
+            opacity={0.2 + index / 11 * 0.8}
+            transform={`rotate(${index * 30} 12 12)`}
+          />
+        ))}
+      </svg>
       <span className="sr-only">
         {refreshing
           ? "Refreshing…"
-          : distance >= 64
-            ? "Release to refresh"
-            : distance > 6
-              ? "Pull to refresh"
-              : ""}
+          : distance > 6 ? "Pull to refresh" : ""}
       </span>
     </div>
   );

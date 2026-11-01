@@ -537,7 +537,7 @@ function TabContent({ hash, active, tabId, destinations }: {
         <PullToRefresh
           scrollRef={scrollRef}
           routeKey={hash}
-          disabled={!["feed", "item", "user"].includes(route.type)}
+          disabled={!active || !["feed", "item", "user"].includes(route.type)}
           refreshing={isRefreshing}
           onRefresh={triggerRefresh}
         />
@@ -805,18 +805,10 @@ function TabContent({ hash, active, tabId, destinations }: {
             <span>Newest first</span>
             {newest && <Check size={19} />}
           </button>
-          <button onClick={refreshPage}>
-            <RefreshCw size={20} />
-            <span>Refresh discussion</span>
-          </button>
         </PopoverMenu>
       )}
       {sheet === "user" && route.type === "user" && (
         <PopoverMenu title={`${route.name} options`} className="action-popover" hideTitle anchor={actionAnchor} close={closeSheet}>
-          <button onClick={refreshPage}>
-            <RefreshCw size={20} />
-            <span>Refresh profile</span>
-          </button>
           <button onClick={() => shareLink(`${route.name} on Hnollo`, appUserUrl(route.name))}>
             <Share size={20} />
             <span>Share profile</span>

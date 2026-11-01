@@ -13,6 +13,7 @@
   --surface: #f7f7f7;
   --bar: #f5f5f9;
   --grouped: #ebebef;
+  --refresh-background: var(--grouped);
   --line: #dedee0;
   --preview: #efeff0;
   --read: #99999f;
@@ -28,6 +29,7 @@
   --surface: #202127;
   --bar: #202127;
   --grouped: #15161b;
+  --refresh-background: var(--bar);
   --line: #36373f;
   --preview: #292a33;
   --read: #80818b;
@@ -1265,7 +1267,7 @@ a:active {
 .feed-search,
 .comment-search {
   padding: 0 15px 9px;
-  background: var(--bar);
+  background: var(--refresh-background);
 }
 .feed-search .search-field {
   width: 100%;
@@ -1627,12 +1629,24 @@ a:active {
   flex-shrink: 0;
   overflow: hidden;
   color: var(--secondary);
+  background: var(--refresh-background);
+  user-select: none;
+  pointer-events: none;
 }
-.pull-ready {
-  color: var(--blue);
+.scroll-view.refresh-gesture {
+  overflow-anchor: none;
 }
-.pull-loading > svg {
-  animation: spin 0.8s linear infinite;
+.pull-settling {
+  transition: height 0.2s ease-out;
+}
+.pull-spinner {
+  display: block;
+  width: 22px;
+  height: 22px;
+  flex-shrink: 0;
+}
+.pull-loading .pull-spinner {
+  animation: spin 0.8s steps(12, end) infinite;
 }
 .sr-only {
   position: absolute;
