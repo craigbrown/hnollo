@@ -18,6 +18,8 @@
   --preview: #efeff0;
   --read: #99999f;
   --comment-highlight: #f6ecd7;
+  --collapsed-background: #c1c1c4;
+  --collapsed-text: #f7f7f7;
   --shadow: 0 0 0 1px #00000008, 0 12px 70px #2323380a;
   color-scheme: light;
 }
@@ -34,6 +36,8 @@
   --preview: #292a33;
   --read: #80818b;
   --comment-highlight: #403820;
+  --collapsed-background: #36363b;
+  --collapsed-text: #a0a0a7;
   background: #111216;
   color-scheme: dark;
 }
@@ -322,8 +326,16 @@ a:active {
   border-radius: 3px;
 }
 .collapsed-count {
-  font-size: 11px;
-  color: var(--secondary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 15px;
+  height: 20px;
+  padding: 0 3px;
+  border-radius: 5px;
+  background: var(--collapsed-background);
+  font-size: 12px;
+  color: var(--collapsed-text);
   font-weight: 400;
   white-space: nowrap;
 }
@@ -1434,6 +1446,16 @@ a:active {
 .comment-collapsed {
   min-height: 40px;
 }
+.comment-collapsed .comment-header {
+  margin-bottom: 0;
+}
+.comment-row[data-comment-toggle="true"] {
+  cursor: pointer;
+}
+.comment-row:has(.comment-toggle:focus-visible) {
+  outline: 2px solid var(--blue);
+  outline-offset: -3px;
+}
 .more-replies {
   display: flex;
   align-items: center;
@@ -1678,9 +1700,11 @@ html::-webkit-scrollbar {
 .comment-author-group .op-author {
   color: var(--blue);
 }
-.comment-collapse.icon-button {
-  width: 20px;
-  min-width: 20px;
+.comment-toggle:not(.sr-only) {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+  gap: 10px;
   height: 25px;
   color: var(--tertiary);
 }

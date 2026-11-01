@@ -1,7 +1,6 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef, useState } from "react";
 import {
   ChevronDown,
-  ChevronRight,
   MessageCircle,
   MoreHorizontal,
   Search,
@@ -20,6 +19,8 @@ import { Empty, ErrorState, Loading, RichText } from "./Common";
 import { useScrollSurface } from "./ScrollSurface";
 import { useCommentPosition } from "./useCommentPosition";
 import { pageScrollTop, pageViewport, scrollPage } from "../pageScroll";
+import { knownThreadCount, loadThreadCount } from "../commentThreads";
+import type { ThreadCount } from "../commentThreads";
 
 interface CommentProps {
   id: number;
@@ -54,7 +55,14 @@ function Comment({
   const [collapsed, setCollapsed] = useState(false);
   const [limit, setLimit] = useState(6);
   const [retry, setRetry] = useState(0);
+  const [threadCount, setThreadCount] = useState<{
+    item: HNItem;
+    context?: HNItem[];
+    total: ThreadCount;
+  }>();
+  const contentId = useId();
   const container = useRef<HTMLDivElement>(null);
+  const wasCollapsed = useRef(false);
   useReader();
   const read = !!item && isCommentRead(item, storyId);
   const isNew =
@@ -93,9 +101,36 @@ function Comment({
       cancelled = true;
     };
   }, [id, ready, retry, forceRefresh, context]);
+  useEffect(() => {
+    if (!active || !collapsed || !item || knownThreadCount(item, context).complete) return;
+    const controller = new AbortController();
+    loadThreadCount(item, context, controller.signal).then((total) => {
+      if (!controller.signal.aborted) setThreadCount({ item, context, total });
+    });
+    return () => controller.abort();
+  }, [active, collapsed, item, context]);
+  useLayoutEffect(() => {
+    const justCollapsed = collapsed && !wasCollapsed.current;
+    wasCollapsed.current = collapsed;
+    if (!justCollapsed || !active) return;
+    const row = container.current?.querySelector<HTMLElement>(":scope > .comment-row");
+    const header = container.current?.closest(".app-shell")?.querySelector(".navigation-bar");
+    if (!row || !header) return;
+    const top = header.getBoundingClientRect().bottom + 8;
+    const rowTop = row.getBoundingClientRect().top;
+    // A tap midway through a long comment should leave its collapsed row visible.
+    if (rowTop < top) scrollPage(pageScrollTop() + rowTop - top);
+  }, [collapsed, active]);
+  const knownTotal = collapsed && item ? knownThreadCount(item, context) : undefined;
+  const total = knownTotal?.complete
+    ? knownTotal
+    : collapsed && item && threadCount?.item === item && threadCount.context === context
+      ? threadCount.total
+      : knownTotal;
   // Keep ancestors together in a permalink view, without intervening siblings
   // displacing the parent context. The selected comment's replies remain normal.
   const contextChild = context?.[1];
+  const childContext = useMemo(() => context?.slice(1), [context]);
   const children = contextChild ? [contextChild.id] : item?.kids ?? [];
   const style = {
     "--depth": Math.min(depth, 7),
@@ -117,8 +152,16 @@ function Comment({
         style={style}
         data-depth={depth}
         data-new={isNew || undefined}
+        data-comment-toggle={(!!item && !failed) || undefined}
         aria-current={id === focusedId ? "true" : undefined}
         aria-label={isNew ? `New comment by ${item?.by}` : undefined}
+        onClick={(event) => {
+          if (!item || failed || !(event.target instanceof Element)) return;
+          if (event.target.closest("a, button, input, select, textarea, [role='button']")) return;
+          // Selecting/copying text must not collapse the comment under the selection.
+          if (window.getSelection()?.isCollapsed === false) return;
+          setCollapsed((value) => !value);
+        }}
       >
         {failed ? (
           <button
@@ -151,51 +194,42 @@ function Comment({
                   <span className="comment-author">[deleted]</span>
                 )}
                 {item.by === author && <span className="op-badge">OP</span>}
-                {collapsed && (
-                  <span className="collapsed-count">
-                    {children.length
-                      ? `${children.length} ${children.length === 1 ? "reply" : "replies"}`
-                      : "collapsed"}
-                  </span>
-                )}
               </div>
               <button
-                className="comment-collapse icon-button"
+                className={`comment-toggle ${collapsed ? "" : "sr-only"}`}
                 onClick={() => setCollapsed((value) => !value)}
                 aria-expanded={!collapsed}
-                aria-label={`${collapsed ? "Expand" : "Collapse"} comment by ${item.by ?? "deleted"}`}
+                aria-controls={`${contentId}-body ${contentId}-children`}
+                aria-label={`${collapsed ? "Expand" : "Collapse"} comment by ${item.by ?? "deleted"}${total ? ` (${total.complete ? "" : "at least "}${total.count} ${total.count === 1 ? "comment" : "comments"} collapsed)` : ""}`}
               >
-                {collapsed ? (
-                  <ChevronRight size={14} />
-                ) : (
-                  <ChevronDown size={14} />
-                )}
+                {collapsed && <span className="collapsed-count" aria-hidden="true">{total?.count}{total?.complete ? "" : "+"}</span>}
+                {collapsed && <ChevronDown size={16} aria-hidden="true" />}
               </button>
-              <button
-                className="comment-menu icon-button"
-                onClick={(event) => onActions(item, event.currentTarget)}
-                aria-label={`Actions for comment by ${item.by ?? "deleted"}`}
-              >
-                <MoreHorizontal size={20} />
-              </button>
-              <span className="comment-time">{timeAgo(item.time)}</span>
+              {!collapsed && (
+                <button
+                  className="comment-menu icon-button"
+                  onClick={(event) => onActions(item, event.currentTarget)}
+                  aria-label={`Actions for comment by ${item.by ?? "deleted"}`}
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+              )}
+              {!collapsed && <span className="comment-time">{timeAgo(item.time)}</span>}
             </div>
-            {!collapsed && (
-              <div className="comment-body">
-                {item.deleted || item.dead ? (
-                  <span className="comment-tombstone">
-                    {item.deleted ? "[deleted]" : "[unavailable]"}
-                  </span>
-                ) : (
-                  <RichText html={item.text ?? ""} />
-                )}
-              </div>
-            )}
+            <div className="comment-body" id={`${contentId}-body`} hidden={collapsed}>
+              {item.deleted || item.dead ? (
+                <span className="comment-tombstone">
+                  {item.deleted ? "[deleted]" : "[unavailable]"}
+                </span>
+              ) : (
+                <RichText html={item.text ?? ""} />
+              )}
+            </div>
           </>
         )}
       </div>
-      {item && !collapsed && (
-        <div className="comment-children">
+      {item && (
+        <div className="comment-children" id={`${contentId}-children`} hidden={collapsed}>
           {children.slice(0, limit).map((child) => (
             <Comment
               key={child}
@@ -207,7 +241,7 @@ function Comment({
               readAtOpen={readAtOpen}
               onActions={onActions}
               forceRefresh={forceRefresh}
-              context={contextChild ? context!.slice(1) : undefined}
+              context={contextChild ? childContext : undefined}
               focusedId={focusedId}
             />
           ))}
