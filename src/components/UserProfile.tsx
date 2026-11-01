@@ -119,6 +119,14 @@ export function UserProfile({
     <div className="profile-page">
       {section === "overview" && (
         <>
+          {user.about?.trim() && (
+            <section
+              className="profile-about profile-introduction"
+              aria-label={`About ${user.id}`}
+            >
+              <RichText html={user.about} />
+            </section>
+          )}
           <div className="profile-stats" aria-label="Account statistics">
             <div>
               <strong>{number(user.karma)}</strong>

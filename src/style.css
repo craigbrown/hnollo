@@ -1719,6 +1719,15 @@ a:active {
   padding: 16px 14px;
   font-size: var(--comment-size);
 }
+.profile-introduction {
+  background: transparent;
+  padding-top: 20px;
+  padding-bottom: 0;
+}
+.profile-introduction + .profile-stats {
+  padding-top: 20px;
+  padding-bottom: 18px;
+}
 .profile-joined {
   padding-top: 22px;
   font-size: 12px;
