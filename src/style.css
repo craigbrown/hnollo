@@ -1004,7 +1004,7 @@ a:active {
   align-items: center;
   left: max(18px, calc((100% - 700px) / 2 + 18px));
   right: max(18px, calc((100% - 700px) / 2 + 18px));
-  bottom: max(18px, env(safe-area-inset-bottom));
+  bottom: max(8px, env(safe-area-inset-bottom));
   height: 56px;
   padding: 3px;
   z-index: 5;
@@ -1490,7 +1490,7 @@ a:active {
   align-items: center;
   justify-content: center;
   right: max(15px, calc((100% - 700px) / 2 + 15px));
-  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 66px);
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 66px);
   width: 41px;
   height: 41px;
   border-radius: 50%;
@@ -1628,7 +1628,7 @@ html::-webkit-scrollbar {
   position: fixed;
   z-index: 4;
   top: calc(60px + env(safe-area-inset-top));
-  bottom: calc(max(18px, env(safe-area-inset-bottom)) + 66px);
+  bottom: calc(max(8px, env(safe-area-inset-bottom)) + 66px);
   right: max(0px, calc((100% - 700px) / 2));
   width: 16px;
   opacity: 0;
