@@ -306,12 +306,16 @@ export function ThreadView({
   onShare: (item: HNItem) => void;
   onRefreshComplete: () => void;
 }) {
-  const { contentRef } = useScrollSurface();
+  const { contentRef, preview } = useScrollSurface();
   const [item, setItem] = useState<HNItem | null | undefined>(() => {
     const cached = peekItem(id);
     return cached?.type === "comment" ? undefined : cached;
   });
-  const [visit, setVisit] = useState<DiscussionVisit>();
+  // Show the comments from the last visit until this one is recorded, so a
+  // returning reader's page is tall enough to restore their scroll position.
+  const [visit, setVisit] = useState<DiscussionVisit | undefined>(() =>
+    reader.get().discussions[id],
+  );
   const [error, setError] = useState(false);
   const [retry, setRetry] = useState(0);
   const [limit, setLimit] = useState(20);
@@ -323,6 +327,8 @@ export function ThreadView({
     new Set(Object.keys(reader.get().comments).map(Number)),
   );
   useEffect(() => {
+    // A preview only shows cached data, and mustn't count as opening the post.
+    if (preview) return;
     let cancelled = false;
     setError(false);
     // Always revalidate the discussion count so the New badge is based on the
@@ -355,7 +361,7 @@ export function ThreadView({
     return () => {
       cancelled = true;
     };
-  }, [id, commentId, refresh, retry, onLoaded, onRefreshComplete]);
+  }, [id, commentId, refresh, retry, onLoaded, onRefreshComplete, preview]);
   if (error)
     return (
       <ErrorState

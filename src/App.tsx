@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from "react";
+import type { CSSProperties } from "react";
 import {
   ArrowUpRight,
   Bookmark,
@@ -45,10 +46,11 @@ import { UserProfile } from "./components/UserProfile";
 import { OverlayScrollbar } from "./components/OverlayScrollbar";
 import { ScrollSurface } from "./components/ScrollSurface";
 import {
-  navigate as nav, goBack, switchTab, useTabNavigation,
+  navigate as nav, goBack, forwardPage, switchTab, useTabNavigation,
   rememberScrollPosition, savedScrollPosition,
 } from "./navigation";
 import { scrollPage } from "./pageScroll";
+import { useEdgeSwipe } from "./edgeSwipe";
 import type { TabId } from "./navigation";
 import {
   TopSortIcon,
@@ -136,25 +138,49 @@ const feedColors = {
 
 export default function App() {
   const { active, tabs } = useTabNavigation();
+  const swipePage = useEdgeSwipe(tabs[active].stack, forwardPage(active));
   const destinations = Object.fromEntries(
     Object.entries(tabs).map(([id, state]) => [id, state.stack.at(-1)!]),
   ) as Record<TabId, string>;
-  return (Object.keys(tabs) as TabId[]).map((tab) =>
-    tabs[tab].visited && (
-      <TabContent
-        key={tab}
-        tabId={tab}
-        hash={tabs[tab].stack.at(-1)!}
-        active={active === tab}
-        destinations={destinations}
-      />
-    ),
+  return (
+    <>
+      {(Object.keys(tabs) as TabId[]).map((tab) =>
+        tabs[tab].visited && (
+          <TabContent
+            key={tab}
+            tabId={tab}
+            hash={tabs[tab].stack.at(-1)!}
+            active={active === tab}
+            destinations={destinations}
+          />
+        ),
+      )}
+      {swipePage && (
+        <div
+          className={`edge-swipe-page ${swipePage.direction}`}
+          inert
+          style={{
+            "--preview-scroll": `${-savedScrollPosition(active, swipePage.hash)}px`,
+          } as CSSProperties}
+        >
+          <TabContent
+            key={swipePage.hash}
+            tabId={active}
+            hash={swipePage.hash}
+            active={false}
+            preview
+            destinations={destinations}
+          />
+        </div>
+      )}
+    </>
   );
 }
 
-function TabContent({ hash, active, tabId, destinations }: {
+function TabContent({ hash, active, preview = false, tabId, destinations }: {
   hash: string;
   active: boolean;
+  preview?: boolean;
   tabId: TabId;
   destinations: Record<TabId, string>;
 }) {
@@ -215,8 +241,10 @@ function TabContent({ hash, active, tabId, destinations }: {
     route.type === "item" ? peekItem(route.id) : undefined,
   );
   const contentRef = useRef<HTMLElement>(null);
-  const scrollId = `scroll-view-${tabId}`;
-  const surface = useMemo(() => ({ contentRef, active }), [active]);
+  const scrollId = `scroll-view-${tabId}${preview ? "-preview" : ""}`;
+  const surface = useMemo(
+    () => ({ contentRef, active, preview }), [active, preview],
+  );
   const toastTimer = useRef<ReturnType<typeof setTimeout> | undefined>(
     undefined,
   );
@@ -235,6 +263,7 @@ function TabContent({ hash, active, tabId, destinations }: {
     setThreadNew(newCount);
   }, []);
   useEffect(() => {
+    if (preview) return;
     seedItems([...state.history, ...state.saved]);
     // Seeding is only needed at startup; live items are already cached by the API.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -357,7 +386,7 @@ function TabContent({ hash, active, tabId, destinations }: {
   }
   const content = (
     <div
-      hidden={!active}
+      hidden={!active && !preview}
       onClickCapture={(event) => {
         if (
           event.button !== 0 ||

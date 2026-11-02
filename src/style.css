@@ -1002,9 +1002,87 @@ a:active {
   min-height: 100svh;
   padding-top: calc(56px + env(safe-area-inset-top));
   padding-bottom: calc(96px + env(safe-area-inset-bottom));
+  background: var(--surface);
 }
 .scroll-view:has(> .settings-page, > .feeds-page, > .profile-page) {
   background: var(--grouped);
+}
+/* Edge swipes slide one page over another, as iOS does: the current page off
+   the previous one, or the next page back over the current one. The page
+   underneath trails behind and is dimmed, and the tab bar stays where it is.
+   --edge-swipe is the upper page's position. */
+.edge-swipe-page {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+.edge-swipe-page.back {
+  z-index: -1;
+  transform: translateX(calc((var(--edge-swipe, 0px) - 100vw) * 0.3));
+}
+.edge-swipe-page.back::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 10;
+  background: #000;
+  opacity: calc((1 - var(--edge-swipe-progress, 0)) * 0.1);
+}
+.edge-swipe-page.forward {
+  z-index: 6;
+  overflow: visible;
+  transform: translateX(var(--edge-swipe, 100vw));
+  box-shadow: -2px 0 16px #00000021;
+}
+.edge-swipe-page.forward::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  right: 100%;
+  width: 100vw;
+  background: #000;
+  opacity: calc((1 - var(--edge-swipe-progress, 1)) * 0.1);
+}
+.edge-swipe-page.forward > .app-shell {
+  height: 100%;
+  overflow: hidden;
+}
+.edge-swipe-page .scroll-view {
+  transform: translateY(var(--preview-scroll));
+}
+.edge-swipe-page .tab-bar,
+.edge-swipe-page .toast,
+.edge-swipe-page .storage-warning,
+.edge-swiping .jump-button,
+.edge-swiping .overlay-scrollbar {
+  display: none;
+}
+.edge-swiping-back #root > .app-shell {
+  background: transparent;
+  box-shadow: none;
+}
+.edge-swiping-back #root > .app-shell > .navigation-bar,
+.edge-swiping-back #root > .app-shell > .scroll-view {
+  transform: translateX(var(--edge-swipe, 0px));
+}
+.edge-swiping-back #root > .app-shell > .scroll-view {
+  box-shadow: -2px 0 16px #00000021;
+}
+.edge-swiping-forward #root > .app-shell > .navigation-bar,
+.edge-swiping-forward #root > .app-shell > .scroll-view {
+  transform: translateX(calc((var(--edge-swipe, 100vw) - 100vw) * 0.3));
+}
+.edge-swiping-forward #root > .app-shell > .tab-bar {
+  z-index: 7;
+}
+.edge-swipe-settling #root > .app-shell > .navigation-bar,
+.edge-swipe-settling #root > .app-shell > .scroll-view,
+.edge-swipe-settling .edge-swipe-page,
+.edge-swipe-settling .edge-swipe-page::before,
+.edge-swipe-settling .edge-swipe-page::after {
+  transition: transform 0.26s cubic-bezier(0.2, 0.8, 0.3, 1),
+    opacity 0.26s cubic-bezier(0.2, 0.8, 0.3, 1);
 }
 .tab-bar {
   position: fixed;
@@ -1640,9 +1718,11 @@ html::-webkit-scrollbar {
   right: max(0px, calc((100% - 700px) / 2));
   width: 16px;
   opacity: 0;
-  touch-action: none;
   user-select: none;
   transition: opacity 180ms ease;
+}
+.overlay-scrollbar.scrollbar-active {
+  touch-action: none;
 }
 .overlay-scrollbar[data-overflow="false"] {
   visibility: hidden;

@@ -142,6 +142,9 @@ export function OverlayScrollbar({
       data-overflow={metrics.range > 1}
       onPointerDown={(event) => {
         if (event.button !== 0) return;
+        // A finger can only grab the scrollbar while it's showing, so touches at
+        // the screen edge otherwise reach the page and edge swipes.
+        if (event.pointerType === "touch" && !active) return;
         event.preventDefault();
         const current = metricsRef.current;
         const y =

@@ -65,8 +65,23 @@ const subscribe = (listener: () => void) => {
   return () => { listeners.delete(listener); };
 };
 const getSnapshot = () => navigation;
+// Pages each tab went back from, most recent last, for swiping forward again.
+const forwards: Partial<Record<TabId, string[]>> = {};
+export const forwardPage = (tab: TabId) => forwards[tab]?.at(-1);
+function trackForward(tab: TabId, stack: string[]) {
+  const previous = navigation.tabs[tab].stack;
+  const same = (a: string[], b: string[]) =>
+    a.length === b.length && a.every((hash, index) => hash === b[index]);
+  if (same(stack, previous)) return;
+  const forward = forwards[tab] ?? [];
+  if (same(stack, previous.slice(0, -1))) forwards[tab] = [...forward, previous.at(-1)!];
+  else if (same(stack.slice(0, -1), previous) && forward.at(-1) === stack.at(-1))
+    forwards[tab] = forward.slice(0, -1);
+  else forwards[tab] = [];
+}
 function activate(tab: TabId, stack: string[]) {
   if (tab === navigation.active && stack === navigation.tabs[tab].stack) return;
+  trackForward(tab, stack);
   // Capture before the previous tab is hidden: a shorter destination can
   // immediately clamp the document's scroll position during the DOM update.
   rememberScrollPosition(navigation.active, navigation.tabs[navigation.active].stack.at(-1)!);
@@ -88,12 +103,19 @@ function writeHistory(tab: TabId, stack: string[], replace = false) {
   activate(tab, stack);
 }
 
-export function navigate(path: string) {
+export function navigate(path: string, restoreScroll = false) {
   const hash = normalize(path);
   const tab = owner(hash, navigation.active);
   const stack = navigation.tabs[tab].stack;
   if (tab === navigation.active && stack.at(-1) === hash) return;
-  writeHistory(tab, stack.at(-1) === hash ? stack : [...stack, hash]);
+  if (stack.at(-1) === hash) {
+    writeHistory(tab, stack);
+    return;
+  }
+  // A page opened afresh starts at the top. Only going forward returns to
+  // where the reader left it.
+  if (!restoreScroll) positions.delete(`${tab}:${hash}`);
+  writeHistory(tab, [...stack, hash]);
 }
 export function switchTab(tab: TabId) {
   if (tab !== navigation.active) {
@@ -140,6 +162,10 @@ export function goBack() {
   // After a tab switch the browser's previous entry belongs to another tab.
   // Pop this tab's own stack without taking the reader back to that other tab.
   else writeHistory(tab, stack.slice(0, -1), true);
+}
+export function goForward() {
+  const hash = forwardPage(navigation.active);
+  if (hash) navigate(hash, true);
 }
 
 export function useTabNavigation() {
