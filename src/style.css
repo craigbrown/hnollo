@@ -602,6 +602,9 @@ a:active {
 .slate {
   background: #7f8fa3;
 }
+.black {
+  background: #000;
+}
 .settings-row > svg:last-child {
   margin-left: auto;
   color: var(--tertiary);

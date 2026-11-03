@@ -11,6 +11,7 @@ import {
   Youtube,
 } from "lucide-react";
 import { version } from "../../package.json";
+import { GitHubIcon } from "./Icons";
 import { reader, useReader } from "../store";
 import type { Preferences } from "../store";
 
@@ -149,6 +150,18 @@ export function SettingsView() {
           </span>
           <span>Privacy</span>
           <ChevronRight size={15} />
+        </a>
+        <a
+          className="settings-row"
+          href="https://github.com/craigbrown/hnollo"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          <span className="settings-icon black">
+            <GitHubIcon size={18} />
+          </span>
+          <span>View on GitHub</span>
+          <ArrowUpRight size={17} />
         </a>
         <a
           className="settings-row"
