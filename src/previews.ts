@@ -155,8 +155,11 @@ async function discover(url: string): Promise<LinkPreview> {
   active++;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 7000);
+  // The https:// app can't fetch http:// pages, and sites that redirect to
+  // https:// rarely send CORS headers on the redirect, so go straight there.
+  const request = url.replace(/^http:\/\//i, "https://");
   try {
-    const response = await fetch(url, {
+    const response = await fetch(request, {
       mode: "cors",
       credentials: "omit",
       referrerPolicy: "no-referrer",
@@ -169,7 +172,7 @@ async function discover(url: string): Promise<LinkPreview> {
       )
     )
       throw new Error("No readable HTML metadata");
-    const data = parsePreview(await readHead(response), response.url || url);
+    const data = parsePreview(await readHead(response), response.url || request);
     remember(url, data, true);
     return data;
   } catch {
