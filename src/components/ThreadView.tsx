@@ -321,8 +321,12 @@ export function ThreadView({
   const [limit, setLimit] = useState(20);
   const [query, setQuery] = useState("");
   const [context, setContext] = useState<HNItem[]>();
+  // Set when this page's ID turns out to be a comment, e.g. from a link to
+  // news.ycombinator.com/item?id=<comment>, which doesn't say which story it's in.
+  const [linkedComment, setLinkedComment] = useState<number>();
+  const focusedId = commentId ?? linkedComment;
   const discussion = useRef<HTMLDivElement>(null);
-  useCommentPosition(commentId, visit ? context : undefined, query, discussion);
+  useCommentPosition(focusedId, visit ? context : undefined, query, discussion);
   const readAtOpen = useRef(
     new Set(Object.keys(reader.get().comments).map(Number)),
   );
@@ -334,9 +338,16 @@ export function ThreadView({
     // Always revalidate the discussion count so the New badge is based on the
     // latest HN response, rather than a previously cached feed item.
     async function load() {
-      if (!commentId) return getItem(id, true);
-      const result = await getCommentContext(commentId, refresh > 0 || retry > 0);
-      if (id !== commentId && result.story.id !== id)
+      let selected = commentId;
+      if (!selected) {
+        const value = await getItem(id, true);
+        if (value?.type !== "comment") return value;
+        // Open a linked comment within its discussion.
+        selected = id;
+        if (!cancelled) setLinkedComment(id);
+      }
+      const result = await getCommentContext(selected, refresh > 0 || retry > 0);
+      if (id !== selected && result.story.id !== id)
         throw new Error("Comment belongs to a different discussion");
       const story = await getItem(result.story.id, true);
       if (!cancelled) setContext(result.comments);
@@ -366,7 +377,7 @@ export function ThreadView({
     return (
       <ErrorState
         onRetry={() => setRetry((n) => n + 1)}
-        message={commentId
+        message={focusedId
           ? "Couldn't load this comment's context."
           : "Couldn't load this discussion."}
       />
@@ -450,7 +461,7 @@ export function ThreadView({
                   onActions={onActions}
                   forceRefresh={refresh > 0}
                   context={context}
-                  focusedId={commentId}
+                  focusedId={focusedId}
                 />
               ))}
             </section>

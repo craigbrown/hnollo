@@ -11,7 +11,7 @@ import {
   Globe,
 } from "lucide-react";
 import type { HNItem, ItemActionHandler } from "../types";
-import { decode, domain, number, safeUrl, timeAgo, userPath } from "../utils";
+import { decode, domain, hnPath, number, safeUrl, timeAgo, userPath } from "../utils";
 import { newCommentCount, reader, useReader } from "../store";
 import { RichText } from "./Common";
 import { peekItem } from "../api";
@@ -142,9 +142,9 @@ export function Post({
           <div className="post-detail-tools">
             {url && (
               <a
-                href={url}
-                target="_blank"
-                rel="noopener noreferrer"
+                href={hnPath(url) ?? url}
+                target={hnPath(url) ? undefined : "_blank"}
+                rel={hnPath(url) ? undefined : "noopener noreferrer"}
                 onClick={() => reader.markPost(item)}
                 aria-label="Read original article"
               >

@@ -24,6 +24,32 @@ export function safeUrl(value?: string) {
     return undefined;
   }
 }
+// The in-app route for a link to a Hacker News post, comment or user, if it is one.
+export function hnPath(value?: string) {
+  try {
+    const url = new URL(value ?? "");
+    if (
+      !["http:", "https:"].includes(url.protocol) ||
+      !/^(?:www\.)?news\.ycombinator\.com$/i.test(url.hostname)
+    ) return undefined;
+    if (url.pathname === "/user") {
+      const name = url.searchParams.get("id") ?? "";
+      return name && name.length <= 80 ? userPath(name) : undefined;
+    }
+    if (url.pathname !== "/item") return undefined;
+    const id = url.searchParams.get("id") ?? "";
+    if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id)) || Number(id) <= 0)
+      return undefined;
+    // HN also links to a comment within its discussion as item?id=story#comment.
+    const comment = url.hash.slice(1);
+    return /^\d+$/.test(comment) && Number.isSafeInteger(Number(comment)) &&
+      Number(comment) > 0 && comment !== id
+      ? `#/item/${id}/comment/${comment}`
+      : `#/item/${id}`;
+  } catch {
+    return undefined;
+  }
+}
 export function domain(value?: string) {
   try {
     return new URL(value ?? "").hostname.replace(/^www\./, "");
@@ -58,7 +84,9 @@ export function sanitize(value: string) {
   const doc = new DOMParser().parseFromString(clean, "text/html");
   doc.querySelectorAll("a").forEach((anchor) => {
     const url = safeUrl(anchor.getAttribute("href") ?? undefined);
+    const path = hnPath(url);
     if (!url) anchor.removeAttribute("href");
+    else if (path) anchor.setAttribute("href", path);
     else {
       anchor.href = url;
       anchor.target = "_blank";

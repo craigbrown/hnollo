@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { domain, safeUrl } from "../utils";
+import { domain, hnPath, safeUrl } from "../utils";
 import type { HNItem } from "../types";
 import { reader, useReader } from "../store";
 import { cachedPreview, getLinkPreview } from "../previews";
@@ -90,13 +90,14 @@ function PreviewCard({ item, title, discover = true }: {
   if (!url) return null;
   const image = !failed ? (knownImage ?? metadata?.image) : undefined;
   const directImage = image === url;
+  const appPath = hnPath(url);
   return (
     <a
       ref={ref}
       className={`link-card ${directImage ? "image-post" : ""}`}
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
+      href={appPath ?? url}
+      target={appPath ? undefined : "_blank"}
+      rel={appPath ? undefined : "noopener noreferrer"}
       onClick={() => reader.markPost(item)}
       aria-label={`Read article on ${domain(url)}`}
     >
