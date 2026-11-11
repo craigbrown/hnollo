@@ -1,5 +1,5 @@
-import { useEffect, useId, useLayoutEffect, useRef } from "react";
-import type { ReactNode } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
+import type { MouseEvent, ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { sanitize } from "../utils";
 export function RichText({
@@ -9,12 +9,47 @@ export function RichText({
   html: string;
   className?: string;
 }) {
+  const clean = useMemo(() => sanitize(html), [html]);
   return (
     <div
       className={`rich-text ${className}`}
-      dangerouslySetInnerHTML={{ __html: sanitize(html) }}
+      onClick={codeAction}
+      dangerouslySetInnerHTML={{ __html: clean }}
     />
   );
+}
+// The wrap and copy buttons sanitize() adds to code blocks keep their state in
+// the DOM, which React leaves alone while the HTML stays the same.
+function codeAction(event: MouseEvent<HTMLDivElement>) {
+  if (!(event.target instanceof Element)) return;
+  const button = event.target.closest<HTMLButtonElement>("[data-code-action]");
+  const block = button?.closest(".code-block");
+  const pre = block?.querySelector("pre");
+  if (!button || !block || !pre) return;
+  if (button.dataset.codeAction === "wrap") {
+    const wrapped = block.classList.toggle("code-wrapped");
+    button.setAttribute("aria-pressed", String(wrapped));
+    return;
+  }
+  const copied = () => {
+    button.classList.add("code-copied");
+    button.setAttribute("aria-label", "Copied");
+    clearTimeout(Number(button.dataset.copiedTimer));
+    button.dataset.copiedTimer = String(
+      setTimeout(() => {
+        button.classList.remove("code-copied");
+        button.setAttribute("aria-label", "Copy code");
+      }, 1500),
+    );
+  };
+  // navigator.clipboard is missing outside secure contexts.
+  Promise.resolve()
+    .then(() => navigator.clipboard.writeText(pre.textContent ?? ""))
+    .then(copied, () => {
+      // Without clipboard access, select the code so it can be copied by hand.
+      const selection = window.getSelection();
+      selection?.selectAllChildren(pre);
+    });
 }
 export function Loading({ label = "Loading stories…" }: { label?: string }) {
   return (

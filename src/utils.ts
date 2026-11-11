@@ -93,7 +93,33 @@ export function sanitize(value: string) {
       anchor.rel = "noopener noreferrer";
     }
   });
+  addCodeTools(doc);
   return doc.body.innerHTML;
+}
+const svg = (body: string) =>
+  `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${body}</svg>`;
+const wrapIcon = svg(
+  '<path d="M3 6h18M3 12h15a3 3 0 1 1 0 6h-4M3 18h7"/><path d="m16 16-2 2 2 2"/>',
+);
+const copyIcon = svg(
+  '<rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/>',
+);
+const checkIcon = svg('<path d="M20 6 9 17l-5-5"/>');
+// Gives each code block wrap and copy buttons, handled by RichText's click listener.
+// Added after DOMPurify, so its allowlist doesn't strip them.
+function addCodeTools(doc: Document) {
+  doc.querySelectorAll("pre").forEach((pre) => {
+    const block = doc.createElement("div");
+    block.className = "code-block";
+    pre.replaceWith(block);
+    block.append(pre);
+    const tools = doc.createElement("div");
+    tools.className = "code-tools";
+    tools.innerHTML =
+      `<button type="button" data-code-action="wrap" aria-pressed="false" aria-label="Wrap lines" title="Wrap lines">${wrapIcon}</button>` +
+      `<button type="button" data-code-action="copy" aria-label="Copy code" title="Copy code">${copyIcon}${checkIcon}</button>`;
+    block.append(tools);
+  });
 }
 export const itemUrl = (id: number) =>
   `https://news.ycombinator.com/item?id=${id}`;
