@@ -1,3 +1,5 @@
+![Hnollo, a Hacker News reader in the style of Apollo](.github/social-preview.jpg)
+
 # Hnollo
 
 Hnollo is a mobile-first, read-only Hacker News client in the style of Apollo. It uses the Hacker News API to get data, and your browser's local storage to save your reading history. I don't collect any data.
