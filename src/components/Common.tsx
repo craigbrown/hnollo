@@ -1,7 +1,8 @@
-import { useEffect, useId, useLayoutEffect, useRef } from "react";
+import { useEffect, useId, useLayoutEffect, useMemo, useRef } from "react";
 import type { ReactNode } from "react";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { sanitize } from "../utils";
+import { addCodeTools, handleCodeBlockClick } from "./codeBlocks";
 export function RichText({
   html,
   className = "",
@@ -9,10 +10,14 @@ export function RichText({
   html: string;
   className?: string;
 }) {
+  const content = useMemo(() => addCodeTools(sanitize(html)), [html]);
   return (
     <div
       className={`rich-text ${className}`}
-      dangerouslySetInnerHTML={{ __html: sanitize(html) }}
+      onClick={(event) => {
+        if (handleCodeBlockClick(event.target)) event.stopPropagation();
+      }}
+      dangerouslySetInnerHTML={{ __html: content }}
     />
   );
 }

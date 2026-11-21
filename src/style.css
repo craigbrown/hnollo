@@ -297,13 +297,93 @@ a:active {
 .rich-text p {
   margin: 12px 0;
 }
+.code-block {
+  position: relative;
+  margin: 12px 0;
+}
 .rich-text pre {
-  white-space: pre-wrap;
-  overflow-wrap: anywhere;
+  margin: 0;
+  white-space: pre;
+  overflow-wrap: normal;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
   padding: 10px;
+  /* Room to scroll the ends of lines out from under the buttons. */
+  padding-right: 66px;
   border-radius: 4px;
   background: var(--preview);
   font-size: 0.85em;
+}
+.rich-text .code-wrapped pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  padding-right: 10px;
+}
+.code-tools {
+  position: absolute;
+  top: 3px;
+  right: 3px;
+  display: flex;
+  gap: 1px;
+  padding-left: 12px;
+  border-radius: 0 4px 0 0;
+  background: linear-gradient(to right, transparent, var(--preview) 12px);
+  transition:
+    opacity 0.15s,
+    visibility 0.15s;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.code-tools button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 4px;
+  color: var(--tertiary);
+  touch-action: manipulation;
+}
+.code-tools button[aria-pressed="true"] {
+  color: var(--blue);
+}
+[data-code-action="copy"] svg:last-child,
+[data-code-action="copy"].code-copied svg:first-child {
+  display: none;
+}
+[data-code-action="copy"].code-copied svg:last-child {
+  display: block;
+}
+.code-tools .code-copied {
+  color: var(--blue);
+}
+@media (hover: none) {
+  /* Hidden by a tap in the block. Hidden buttons can't take a tap, so a tap
+     where they were shows them again rather than pressing one unseen. */
+  .code-tools-hidden .code-tools {
+    opacity: 0;
+    visibility: hidden;
+    /* Unlike visibility, this stops taps at once, not after the fade. */
+    pointer-events: none;
+  }
+}
+@media (hover: hover) {
+  .code-tools {
+    opacity: 0;
+  }
+  .code-block:hover .code-tools,
+  .code-tools:focus-within {
+    opacity: 1;
+  }
+  .code-tools button:hover {
+    color: var(--secondary);
+    background: var(--line);
+  }
+  .code-tools button[aria-pressed="true"]:hover,
+  .code-tools .code-copied:hover {
+    color: var(--blue);
+  }
 }
 .rich-text code {
   font-family: "SFMono-Regular", Consolas, monospace;
